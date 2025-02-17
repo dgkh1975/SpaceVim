@@ -1,10 +1,11 @@
 "=============================================================================
 " floating.vim --- vim floating api
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
+scriptencoding utf-8
 
 let s:self = {}
 
@@ -80,6 +81,18 @@ function! s:self.open_win(buffer, focuce, options) abort
   let highlight = get(a:options, 'highlight', 'Normal') 
   let relative = get(a:options, 'relative', 'editor')
   if relative ==# 'win'
+    let winid = get(a:options, 'win', 0)
+    let pos = win_screenpos(win_id2win(winid))
+    let opt = {
+          \ 'line' : row + 1 + pos[0],
+          \ 'col' : col + pos[1],
+          \ 'maxheight' : height,
+          \ 'minheight' : height,
+          \ 'maxwidth' : width,
+          \ 'minwidth' : width,
+          \ 'highlight' : highlight,
+          \ 'scrollbar' : 0,
+          \ }
   elseif relative ==# 'cursor'
   elseif relative ==# 'editor'
     let opt = {
@@ -104,6 +117,18 @@ function! s:self.win_config(winid, options) abort
   let highlight = get(a:options, 'highlight', '') 
   let relative = get(a:options, 'relative', 'editor')
   if relative ==# 'win'
+    let winid = get(a:options, 'win', 0)
+    let pos = win_screenpos(win_id2win(winid))
+    let opt = {
+          \ 'line' : row + 1 + pos[0],
+          \ 'col' : col + pos[1],
+          \ 'maxheight' : height,
+          \ 'minheight' : height,
+          \ 'maxwidth' : width,
+          \ 'minwidth' : width,
+          \ 'highlight' : highlight,
+          \ 'scrollbar' : 0,
+          \ }
   elseif relative ==# 'cursor'
   elseif relative ==# 'editor'
     let opt = {
@@ -122,6 +147,10 @@ endfunction
 
 function! s:self.exists() abort
   return exists('*popup_create')
+endfunction
+
+function! s:self.get_width(winid) abort
+ return winwidth(a:winid) 
 endfunction
 
 function! s:self.win_close(id, focuce) abort

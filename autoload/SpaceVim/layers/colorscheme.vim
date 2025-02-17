@@ -1,45 +1,68 @@
 "=============================================================================
 " colorscheme.vim --- SpaceVim colorscheme layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section colorscheme, colorscheme
+" @section colorscheme, layers-colorscheme
 " @parentsection layers
-" The ldefault colorscheme for SpaceVim is gruvbox. The colorscheme can be
-" changed with the `g:spacevim_colorscheme` option by adding the following
-" line to your `~/.SpaceVim/init.vim`.
+" The default colorscheme of SpaceVim is gruvbox. It can be changed via
+" `colorscheme` option by adding the following code to @section(options) file:
 " >
-"   let g:spacevim_colorscheme = 'solarized'
+" [options]
+"   colorscheme = 'solarized'
 " <
 "
 " The following colorschemes are include in SpaceVim. If the colorscheme you
 " want is not included in the list below, a PR is welcome.
-"
+" >
+"   | Name         | dark | light | term | gui | statusline |
+"   | ------------ | ---- | ----- | ---- | --- | ---------- |
+"   | molokai      | yes  | no    | yes  | yes | yes        |
+"   | srcery       | yes  | no    | yes  | yes | yes        |
+"   | onedark      | yes  | no    | yes  | yes | yes        |
+"   | jellybeans   | yes  | no    | yes  | yes | yes        |
+"   | palenight    | yes  | no    | yes  | yes | yes        |
+"   | one          | yes  | yes   | yes  | yes | yes        |
+"   | nord         | yes  | no    | yes  | yes | yes        |
+"   | gruvbox      | yes  | yes   | yes  | yes | yes        |
+"   | NeoSolarized | yes  | yes   | yes  | yes | yes        |
+"   | hybrid       | yes  | yes   | yes  | yes | yes        |
+"   | material     | yes  | yes   | yes  | yes | yes        |
+"   | dracula      | yes  | yes   | yes  | yes | yes        |
+"   | SpaceVim     | yes  | yes   | yes  | yes | yes        |
+" <
 " Also, there's one thing which everyone should know and pay attention to.
-" NOT all of below colorschemes support spell check very well. For example,
+" NOT all of above colorschemes support spell check very well. For example,
 " a colorscheme called atom doesn't support spell check very well.
 "
 " SpaceVim is not gonna fix them since these should be in charge of each author.
 
+if exists('s:JSON')
+  finish
+endif
+
 let s:JSON = SpaceVim#api#import('data#json')
 
 function! SpaceVim#layers#colorscheme#plugins() abort
-  return [
+
+
+  let plugins = [
         \ ['Gabirel/molokai', { 'merged' : 0 }],
         \ ['joshdick/onedark.vim', { 'merged' : 0 }],
         \ ['nanotech/jellybeans.vim', { 'merged' : 0 }],
-        \ ['rakr/vim-one', { 'merged' : 0 }],
         \ ['arcticicestudio/nord-vim', { 'merged' : 0 }],
         \ ['icymind/NeoSolarized', { 'merged' : 0 }],
-        \ ['w0ng/vim-hybrid', { 'merged' : 0 }],
         \ ['SpaceVim/vim-material', { 'merged' : 0}],
         \ ['srcery-colors/srcery-vim', { 'merged' : 0}],
         \ [ 'drewtempelmeyer/palenight.vim', {'merged': 0 }],
         \ ]
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/dracula', {'merged' : 0}])
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/vim-one', {'merged' : 0}])
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/vim-hybrid', {'merged' : 0}])
   "
   " TODO:
   " \ ['mhartington/oceanic-next', { 'merged' : 0 }],
@@ -48,7 +71,7 @@ function! SpaceVim#layers#colorscheme#plugins() abort
   " \ ['KeitaNakamura/neodark.vim', { 'merged' : 0 }],
   " \ ['NLKNguyen/papercolor-theme', { 'merged' : 0 }],
   " \ ['SpaceVim/FlatColor', { 'merged' : 0 }],
-
+  return plugins
 endfunction
 
 let s:cs = [
@@ -87,16 +110,16 @@ function! SpaceVim#layers#colorscheme#config() abort
   if s:random_colorscheme
     let ctime = ''
     " Use local file's save time, the local file is
-    " ~/.cache/SpaceVim/colorscheme_frequence.json
-    " {"fequecnce" : "dalily", "last" : 000000, 'theme' : 'one'}
+    " ~/.cache/SpaceVim/colorscheme_frequency.json
+    " {"frequency" : "dalily", "last" : 000000, 'theme' : 'one'}
     " FIXME: when global config cache is updated, check the cache also should
     " be updated
-    if filereadable(expand(g:spacevim_data_dir.'/SpaceVim/colorscheme_frequence.json'))
-      let conf = s:JSON.json_decode(join(readfile(expand(g:spacevim_data_dir.'/SpaceVim/colorscheme_frequence.json'), ''), ''))
+    if filereadable(expand(g:spacevim_data_dir.'SpaceVim/colorscheme_frequency.json'))
+      let conf = s:JSON.json_decode(join(readfile(expand(g:spacevim_data_dir.'SpaceVim/colorscheme_frequency.json'), ''), ''))
       if s:random_frequency !=# '' && !empty(conf)
         let ctime = localtime()
         if index(s:random_candidates, get(conf, 'theme', '')) == -1 ||
-              \ ctime - get(conf, 'last', 0) >= get(s:time,  get(conf, 'fequecnce', ''), 0)
+              \ ctime - get(conf, 'last', 0) >= get(s:time,  get(conf, 'frequency', ''), 0)
           let id = s:NUMBER.random(0, len(s:random_candidates))
           let g:spacevim_colorscheme = s:random_candidates[id]
           call s:update_conf()
@@ -120,11 +143,11 @@ endfunction
 
 function! s:update_conf() abort
   let conf = {
-        \ 'fequecnce' : s:random_frequency,
+        \ 'frequency' : s:random_frequency,
         \ 'last' : localtime(),
         \ 'theme' : g:spacevim_colorscheme
         \ }
-  call writefile([s:JSON.json_encode(conf)], expand(g:spacevim_data_dir.'/SpaceVim/colorscheme_frequence.json'))
+  call writefile([s:JSON.json_encode(conf)], expand(g:spacevim_data_dir.'SpaceVim/colorscheme_frequency.json'))
 endfunction
 
 
@@ -145,6 +168,17 @@ function! SpaceVim#layers#colorscheme#get_options() abort
 
 endfunction
 
+function! SpaceVim#layers#colorscheme#health() abort
+  call SpaceVim#layers#colorscheme#plugins()
+  call SpaceVim#layers#colorscheme#config()
+  return 1
+endfunction
+
+function! SpaceVim#layers#colorscheme#loadable() abort
+
+  return 1
+
+endfunction
 
 " function() wrapper
 if v:version > 703 || v:version == 703 && has('patch1170')

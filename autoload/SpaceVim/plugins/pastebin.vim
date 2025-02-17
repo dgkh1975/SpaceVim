@@ -1,10 +1,17 @@
 "=============================================================================
 " pastebin.vim --- Pastebin support for SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
+
+if has('nvim-0.9.0')
+  function! SpaceVim#plugins#pastebin#paste() abort
+    lua require('spacevim.plugin.pastebin').paste()
+  endfunction
+  finish
+endif
 
 
 let s:JOB = SpaceVim#api#import('job')

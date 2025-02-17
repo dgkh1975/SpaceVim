@@ -1,7 +1,7 @@
 "=============================================================================
 " job.vim --- job api
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -24,6 +24,43 @@
 "   on_exit: exit event handler (function name or Funcref)
 "
 "   cwd: working directory of the job; defaults to current directory
+"
+" stop(id)
+"
+"   stop job via job id.
+"
+" send(id, data)
+"
+"   send {data} to specific job.
+"
+" status(id)
+"
+"   return the job status of a specific job.
+"
+"
+" This api also can be use in lua:
+"
+" Example: >
+"   local job = require('spacevim.api.job')
+"
+"   local function on_stdout(id, data)
+"
+"   end
+"
+"   local function on_stderr(id, data)
+"   
+"   end
+"
+"   local function on_exit(id, code, single)
+"
+"   end
+"
+"   job.start({'vim', '--version'},
+"     on_stdout = on_stdout,
+"     on_stderr = on_stderr,
+"     on_exit = on_exit
+"   )
+" <
 
 
 
@@ -102,6 +139,7 @@ function! s:self.warp_nvim(argv, opts) abort dict
   let obj = {}
   let obj._argv = a:argv
   let obj._opts = a:opts
+  let obj._jobs = self.jobs
   " @vimlint(EVL103, 1, a:job_id)
   " @vimlint(EVL103, 1, a:event)
   function! obj.__on_stdout(id, data, event) abort dict
@@ -114,6 +152,7 @@ function! s:self.warp_nvim(argv, opts) abort dict
         let self._eof = a:data[-1]
       elseif len(a:data) ==# 1 && a:data[-1] ==# '' && !empty(self._eof)
         call self._opts.on_stdout(a:id, [self._eof], 'stdout')
+        let self._eof = ''
       elseif len(a:data) ==# 1 && a:data[-1] !=# ''
         let self._eof .= a:data[-1]
       endif
@@ -130,14 +169,19 @@ function! s:self.warp_nvim(argv, opts) abort dict
         let self._eof = a:data[-1]
       elseif len(a:data) ==# 1 && a:data[-1] ==# '' && !empty(self._eof)
         call self._opts.on_stderr(a:id, [self._eof], 'stderr')
+        let self._eof = ''
       elseif len(a:data) ==# 1 && a:data[-1] !=# ''
         let self._eof .= a:data[-1]
       endif
     endif
   endfunction
-
   function! obj.__on_exit(id, data, event) abort dict
     if has_key(self._opts, 'on_exit')
+      if has_key(self._jobs, a:id)
+        " when run JOB.stop(id), it will be removed from _jobs before
+        " __on_exit function called.
+        let self._jobs[a:id][1] = a:data ? 'failed' : 'dead'
+      endif
       call self._opts.on_exit(a:id, a:data, 'exit')
     endif
   endfunction
@@ -148,6 +192,7 @@ function! s:self.warp_nvim(argv, opts) abort dict
         \ 'argv': a:argv,
         \ 'opts': {
         \ '_opts': obj._opts,
+        \ '_jobs' : obj._jobs,
         \ '_eof': '',
         \ 'on_stdout': obj.__on_stdout,
         \ 'on_stderr': obj.__on_stderr,
@@ -156,6 +201,9 @@ function! s:self.warp_nvim(argv, opts) abort dict
         \ }
   if has_key(a:opts, 'cwd')
     call extend(obj.opts, {'cwd' : a:opts.cwd})
+  endif
+  if has_key(a:opts, 'env')
+    call extend(obj.opts, {'env' : a:opts.env})
   endif
   return obj
 endfunction
@@ -257,10 +305,15 @@ endfunction
 
 function! s:self.stop(id) abort dict
   if self.nvim_job
+    let done = 0
     if has_key(self.jobs, a:id)
-      call jobstop(a:id)
+      try
+        let done = jobstop(a:id)
+      catch
+      endtry
       call remove(self.jobs, a:id)
     endif
+    return done
   elseif self.vim_job
     if has_key(self.jobs, a:id)
       call job_stop(get(self.jobs, a:id))

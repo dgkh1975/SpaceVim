@@ -1,6 +1,6 @@
 "=============================================================================
 " deoplete.vim --- deoplete default config in spacevim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
@@ -14,25 +14,29 @@ call deoplete#custom#option({
       \ 'ignore_case'         :  get(g:, 'deoplete#enable_ignore_case', 1),
       \ 'smart_case'          :  get(g:, 'deoplete#enable_smart_case', 1),
       \ 'camel_case'          :  get(g:, 'deoplete#enable_camel_case', 1),
-      \ 'refresh_always'      :  get(g:, 'deoplete#enable_refresh_always', 1)
+      \ 'refresh_always'      :  get(g:, 'deoplete#enable_refresh_always', 1),
+      \ 'nofile_complete_filetypes' : ['denite-filter'],
       \ })
 
-" java && jsp
-call deoplete#custom#var('omni', 'input_patterns', {
-      \ 'java': [
-      \           '[^. \t0-9]\.\w*',
-      \           '[^. \t0-9]\->\w*',
-      \           '[^. \t0-9]\::\w*',
-      \         ],
-      \ 'jsp':  ['[^. \t0-9]\.\w*'],
-      \})
-if g:spacevim_enable_javacomplete2_py
-  call deoplete#custom#option('ignore_sources', {'java': ['omni']})
-  call deoplete#custom#source('javacomplete2', 'mark', '')
-else
-  call deoplete#custom#option('ignore_sources', {'java': ['javacomplete2', 'around', 'member']})
-  call deoplete#custom#source('omni', 'mark', '')
-  call deoplete#custom#source('omni', 'rank', 9999)
+if !SpaceVim#layers#lsp#check_filetype('java')
+      \ && !SpaceVim#layers#lsp#check_server('jdtls')
+  " java && jsp
+  call deoplete#custom#var('omni', 'input_patterns', {
+        \ 'java': [
+          \           '[^. \t0-9]\.\w*',
+          \           '[^. \t0-9]\->\w*',
+          \           '[^. \t0-9]\::\w*',
+          \         ],
+          \ 'jsp':  ['[^. \t0-9]\.\w*'],
+          \})
+  if g:spacevim_enable_javacomplete2_py
+    call deoplete#custom#option('ignore_sources', {'java': ['omni']})
+    call deoplete#custom#source('javacomplete2', 'mark', '')
+  else
+    call deoplete#custom#option('ignore_sources', {'java': ['javacomplete2', 'around', 'member']})
+    call deoplete#custom#source('omni', 'mark', '')
+    call deoplete#custom#source('omni', 'rank', 9999)
+  endif
 endif
 
 " sh
@@ -49,11 +53,11 @@ call deoplete#custom#option('ignore_sources', {'markdown': ['tag']})
 " perl
 call deoplete#custom#var('omni', 'input_patterns', {
       \ 'perl': [
-      \           '[^. \t0-9]\.\w*',
-      \           '[^. \t0-9]\->\w*',
-      \           '[^. \t0-9]\::\w*',
-      \         ],
-      \})
+        \           '[^. \t0-9]\.\w*',
+        \           '[^. \t0-9]\->\w*',
+        \           '[^. \t0-9]\::\w*',
+        \         ],
+        \})
 
 " javascript
 call deoplete#custom#option('ignore_sources', {'javascript': ['omni']})
@@ -78,17 +82,15 @@ endif
 
 " gitcommit
 call deoplete#custom#var('omni', 'input_patterns', {
-      \ 'gitcommit': [
-      \       '[ ]#[ 0-9a-zA-Z]*',
-      \ ],
-      \})
+      \ 'git-commit': [
+        \       '[ ]#[ 0-9a-zA-Z]*',
+        \ ],
+        \})
 
 call deoplete#custom#option('ignore_sources', {'gitcommit': ['neosnippet']})
 
 " lua
-call deoplete#custom#var('omni', 'input_patterns', {
-      \ 'lua': '.',
-      \})
+call deoplete#custom#option('ignore_sources', {'lua': ['omni']})
 
 " c c++
 call deoplete#custom#source('clang2', 'mark', '')
@@ -115,9 +117,9 @@ call deoplete#custom#option('ignore_sources', {'ocaml': ['buffer', 'around', 'om
 " erlang
 call deoplete#custom#var('omni', 'input_patterns', {
       \ 'erlang': [
-      \   '[^. \t0-9]\.\w*',
-      \ ],
-      \})
+        \   '[^. \t0-9]\.\w*',
+        \ ],
+        \})
 
 " c#
 call deoplete#custom#option('sources', {'cs': ['omnisharp']})

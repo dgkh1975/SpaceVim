@@ -4,7 +4,7 @@ description: "这一模块为 SpaceVim 提供了mpv支持，可快速查找光�
 lang: zh
 ---
 
-# [可用模块](../) >> tools#mpv
+# [可用模块](../../) >> tools#mpv
 
 <!-- vim-markdown-toc GFM -->
 
@@ -30,7 +30,7 @@ tools#mpv 模块默认并未启用，如果需要启用该模块，需要在配�
 
 ## 模块选项
 
-- `musics_directory`: 设置音乐存放文件夹
+- `musics_directory`: 设置音乐存放文件夹，默认的文件夹是`~/Music`。
 - `mpv_interpreter`: mpv 可执行命令路径
 - `loop_mode`: 循环模式，默认是 `random`
 

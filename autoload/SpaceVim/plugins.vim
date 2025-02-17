@@ -1,12 +1,19 @@
 "=============================================================================
 " plugins.vim --- plugin wrapper
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 scriptencoding utf-8
+
+
+""
+" @section Plugins, plugins
+" This is a list of builtin plugins.
+
+
 function! SpaceVim#plugins#load() abort
   if SpaceVim#plugins#enable_plug()
     call SpaceVim#plugins#begin(g:spacevim_plugin_bundle_dir)
@@ -18,9 +25,10 @@ function! SpaceVim#plugins#load() abort
 
 endfunction
 function! s:load_plugins() abort
-  for group in SpaceVim#layers#get()
-    let g:_spacevim_plugin_layer = group
-    for plugin in s:getLayerPlugins(group)
+  for layer in SpaceVim#layers#get()
+    call SpaceVim#logger#debug('init ' . layer . ' layer plugins list.')
+    let g:_spacevim_plugin_layer = layer
+    for plugin in s:getLayerPlugins(layer)
       if len(plugin) == 2
         call SpaceVim#plugins#add(plugin[0], extend(plugin[1], {'overwrite' : 1}))
         if SpaceVim#plugins#tap(split(plugin[0], '/')[-1]) && get(plugin[1], 'loadconf', 0 )
@@ -33,14 +41,18 @@ function! s:load_plugins() abort
         call SpaceVim#plugins#add(plugin[0], {'overwrite' : 1})
       endif
     endfor
-    call s:loadLayerConfig(group)
   endfor
+  if has('timers')
+    call timer_start(g:spacevim_lazy_conf_timeout, function('s:layer_config_timer'), {'repeat' : 1})
+  else
+    call s:layer_config_timer(0)
+  endif
   unlet g:_spacevim_plugin_layer
   for plugin in g:spacevim_custom_plugins
     if len(plugin) == 2
-      call SpaceVim#plugins#add(plugin[0], plugin[1])
+      call SpaceVim#plugins#add(plugin[0], extend(plugin[1], {'overwrite' : 1}))
     else
-      call SpaceVim#plugins#add(plugin[0])
+      call SpaceVim#plugins#add(plugin[0], {'overwrite' : 1})
     endif
   endfor
 endfunction
@@ -50,16 +62,24 @@ function! s:getLayerPlugins(layer) abort
   try
     let p = SpaceVim#layers#{a:layer}#plugins()
   catch /^Vim\%((\a\+)\)\=:E117/
+    call SpaceVim#logger#info(a:layer . ' layer do not implement plugins function')
   endtry
   return p
 endfunction
 
+function! s:layer_config_timer(t) abort
+  for layer in SpaceVim#layers#get()
+    call s:loadLayerConfig(layer)
+  endfor
+endfunction
+
 function! s:loadLayerConfig(layer) abort
+  call SpaceVim#logger#debug('load ' . a:layer . ' layer config.')
   try
     call SpaceVim#layers#{a:layer}#config()
   catch /^Vim\%((\a\+)\)\=:E117/
+    call SpaceVim#logger#info(a:layer . ' layer do not implement config function')
   endtry
-
 endfunction
 
 let s:plugins_argv = ['-update', '-openurl']
@@ -72,24 +92,6 @@ function! SpaceVim#plugins#complete_plugs(ArgLead, CmdLine, CursorPos) abort
   return join(plugins#list(), "\n")
 endfunction
 
-function! SpaceVim#plugins#Plugin(...) abort
-  let adds = []
-  let updates = []
-  let flag = 0
-  for a in a:000
-    if flag == 1
-      call add(adds, a)
-    elseif flag == 2
-      call add(updates, a)
-    endif
-    if a ==# '-update'
-      let flag = 1
-    elseif a ==# '-openurl'
-      let flag = 2
-    endif
-  endfor
-  echo string(adds) . "\n" . string(updates)
-endfunction
 function! s:disable_plugins(plugin_list) abort
   if g:spacevim_plugin_manager ==# 'dein'
     for name in a:plugin_list
@@ -124,12 +126,12 @@ function! s:install_manager() abort
     let &rtp .= ',' . g:_spacevim_root_dir . 'bundle/dein.vim/'
   elseif g:spacevim_plugin_manager ==# 'vim-plug'
     "auto install vim-plug
-    if filereadable(expand(g:spacevim_data_dir.'/vim-plug/autoload/plug.vim'))
+    if filereadable(expand(g:spacevim_data_dir.'vim-plug/autoload/plug.vim'))
       let g:_spacevim_vim_plug_installed = 1
     else
       if executable('curl')
         exec '!curl -fLo '
-              \ . g:spacevim_data_dir.'/vim-plug/autoload/plug.vim'
+              \ . g:spacevim_data_dir.'vim-plug/autoload/plug.vim'
               \ . ' --create-dirs '
               \ . 'https://raw.githubusercontent.com/'
               \ . 'junegunn/vim-plug/master/plug.vim'
@@ -148,6 +150,8 @@ call s:install_manager()
 
 
 function! SpaceVim#plugins#begin(path) abort
+let g:unite_source_menu_menus =
+      \ get(g:,'unite_source_menu_menus',{})
   let g:unite_source_menu_menus.AddedPlugins =
         \ {'description':
         \ 'All the Added plugins'
@@ -200,10 +204,25 @@ function! SpaceVim#plugins#defind_hooks(bundle) abort
       call SpaceVim#util#loadConfig('plugins/' . split(a:bundle['name'],'\.')[0] . '.vim')
     endf
   elseif g:spacevim_plugin_manager ==# 'dein'
+     " call SpaceVim#logger#debug('plugin name is ' .  g:dein#name)
     call dein#config(g:dein#name, {
-          \ 'hook_source' : "call SpaceVim#util#loadConfig('plugins/" . split(g:dein#name,'\.')[0] . ".vim')"
+          \ 'hook_source' : "call SpaceVim#util#loadConfig('plugins/" . s:get_config_name(g:dein#name) . "')"
           \ })
   endif
+endfunction
+
+
+function! s:get_config_name(name) abort
+  if a:name =~# '\.vim$'
+    return a:name
+  elseif a:name =~# '\.nvim$'
+    return substitute(a:name, '\.nvim$', '.vim', 'g')
+  elseif a:name =~# '\.lua$'
+    return substitute(a:name, '\.lua$', '.vim', 'g')
+  else
+    return a:name . '.vim'
+  endif
+  
 endfunction
 
 
@@ -217,8 +236,12 @@ endfunction
 
 let s:plugins = []
 
-fu! s:parser(args) abort
-  return a:args
+fu! s:parser(repo, args) abort
+  let p = a:args
+  if a:repo =~# g:_spacevim_root_dir . 'bundle/'
+    let p.type = 'none'
+  endif
+  return p
 endf
 let g:_spacevim_plugins = []
 function! SpaceVim#plugins#add(repo,...) abort
@@ -228,7 +251,7 @@ function! SpaceVim#plugins#add(repo,...) abort
     let g:spacevim_plugin_name = split(a:repo, '/')[-1]
   elseif g:spacevim_plugin_manager ==# 'dein'
     if len(a:000) > 0
-      call dein#add(a:repo,s:parser(a:000[0]))
+      call dein#add(a:repo,s:parser(a:repo, a:000[0]))
     else
       call dein#add(a:repo)
     endif

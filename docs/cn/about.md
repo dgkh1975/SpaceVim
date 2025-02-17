@@ -4,24 +4,38 @@ description: "创建SpaceVim这一项目的目的在于提供一个开箱即用�
 lang: zh
 ---
 
-# [主页](../) >> 关于我们
+# 关于我们
 
-[SpaceVim](https://github.com/SpaceVim/SpaceVim) 是一个社区驱动的模块化 Vim/Neovim 配置集合，以模块的方式组织管理插件以
-及相关配置，为不同的语言开发量身定制了相关的开发模块，该模块提供代码自动补全，
-语法检查、格式化、调试、REPL 等特性。用户仅需载入相关语言的模块即可得到一个开箱
-即用的 Vim-IDE。这一项目的灵感来自于 spacemacs。
+<!-- vim-markdown-toc GFM -->
 
-### 目标
+- [起源](#起源)
+- [目标](#目标)
+- [特别鸣谢](#特别鸣谢)
 
-- 提供可跨平台的优雅的用户体验。
-- 让搭建不同语言开发环境变得更便捷。
+<!-- vim-markdown-toc -->
 
-### 鸣谢
+## 起源
 
-感谢所有曾经向 SpaceVim 贡献过代码的用户：
+起源于 2016 年 12 月份，目前主要由 [Eric Wong](https://wsdjeg.net) 在维护。
 
-<a href="https://github.com/SpaceVim/SpaceVim/graphs/contributors"><img src="https://opencollective.com/spacevim/contributors.svg?width=890&button=false" /></a>
+```diff
+commit 0c95bd8987c124837afef9a271e1b3c4c19a449b
+Author: Wang Shidong <wsdjeg@users.noreply.github.com>
+Date:   Sun Dec 25 22:40:55 2016 -0600
+
+    Initial commit
+```
+
+## 目标
+
+- 智能快捷键导航
+- 实现更多的 IDE 功能，支持 Vim 和 Neovim
+- 更好的编程语言支持
+- 跨平台的一致性
+- 快速启动、高效运行
+
+## 特别鸣谢
 
 - [@Gabirel](https://github.com/Gabirel) 及其 [Hack-SpaceVim](https://github.com/Gabirel/Hack-SpaceVim)
 - [vimdoc](https://github.com/google/vimdoc)：帮助文档自动生成工具
-- SpaceVim 中涉及到的所有插件的作者
+- SpaceVim 中使用的所有插件的作者

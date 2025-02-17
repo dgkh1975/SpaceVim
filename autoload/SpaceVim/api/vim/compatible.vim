@@ -1,7 +1,7 @@
 "=============================================================================
 " compatible.vim --- SpaceVim compatible API
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -193,14 +193,14 @@ if has('patch-7.4.279')
   endfunction
 else
   function! s:self.globpath(dir, expr) abort
-    return split(globpath(a:dir, a:expr), '\n')
+    return split(globpath(a:dir, a:expr), "\n")
   endfunction
 endif
 
 if has('nvim')
   function! s:self.version() abort
     let v = api_info().version
-    return v.major . '.' . v.minor . '.' . v.patch
+    return v.major . '.' . v.minor . '.' . v.patch . (v.prerelease ? '(Prerelease)' : '(Release)')
   endfunction
 else
   function! s:self.version() abort
@@ -343,6 +343,17 @@ else
     return resolve(a:path)
   endfunction
 endif
+
+
+" this function is only for test
+function! s:self.luaeval(expr) abort
+  let rst = luaeval(a:expr)
+  if type(rst) ==# 5
+    return float2nr(rst)
+  else
+    return rst
+  endif
+endfunction
 
 
 

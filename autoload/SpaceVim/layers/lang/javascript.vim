@@ -1,18 +1,18 @@
 "=============================================================================
 " javascript.vim --- SpaceVim lang#javascript layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section lang#javascript, layer-lang-javascript
+" @section lang#javascript, layers-lang-javascript
 " @parentsection layers
 " This layer is for JavaScript development, includes syntax lint, code
 " completion etc. To enable this layer:
 " >
-"   [layers]
+"   [[layers]]
 "     name = "lang#javascript"
 " <
 " The code linter is eslint, install eslint via:
@@ -24,7 +24,7 @@
 " 1. auto_fix: If this option is true, --fix will be added to neomake eslint
 " maker.
 " >
-"   [layers]
+"   [[layers]]
 "     name = "lang#javascript"
 "     auto_fix = true
 " <
@@ -45,23 +45,37 @@
 "   SPC l s l       send current line
 "   SPC l s s       send selection text
 " <
+" If the lsp layer is enabled for javascript, the following key
+" bindings can be used:
+" >
+"   key binding     Description
+"   g D             jump to type definition
+"   SPC l e         rename symbol
+"   SPC l x         show references
+"   SPC l h         show line diagnostics
+"   SPC l d         show document
+"   K               show document
+"   SPC l w l       list workspace folder
+"   SPC l w a       add workspace folder
+"   SPC l w r       remove workspace folder
+" <
 "
 
-
+let s:format_on_save = 0
 
 function! SpaceVim#layers#lang#javascript#plugins() abort
   let plugins = [
         \ ['Galooshi/vim-import-js', {
-        \ 'on_ft': 'javascript', 'build' : 'npm install -g import-js' }],
-        \ ['heavenshell/vim-jsdoc', { 'on_cmd': 'JsDoc' }],
-        \ ['maksimr/vim-jsbeautify', { 'on_ft': 'javascript' }],
-        \ ['mmalecki/vim-node.js', { 'on_ft': 'javascript' }],
-        \ ['moll/vim-node', { 'on_ft': 'javascript' }],
-        \ ['neoclide/vim-jsx-improve', { 'on_ft': 'javascript' }],
-        \ ['othree/es.next.syntax.vim', { 'on_ft': 'javascript' }],
-        \ ['othree/javascript-libraries-syntax.vim', {
-        \ 'on_ft': ['javascript', 'coffee', 'ls', 'typescript'] }],
-        \ ]
+          \ 'on_ft': 'javascript', 'build' : 'npm install -g import-js' }],
+          \ ['heavenshell/vim-jsdoc', { 'on_cmd': 'JsDoc' }],
+          \ ['maksimr/vim-jsbeautify', { 'on_ft': 'javascript' }],
+          \ ['mmalecki/vim-node.js', { 'on_ft': 'javascript' }],
+          \ ['moll/vim-node', { 'on_ft': 'javascript' }],
+          \ ['neoclide/vim-jsx-improve', { 'on_ft': 'javascript' }],
+          \ ['othree/es.next.syntax.vim', { 'on_ft': 'javascript' }],
+          \ ['othree/javascript-libraries-syntax.vim', {
+            \ 'on_ft': ['javascript', 'coffee', 'ls', 'typescript'] }],
+            \ ]
 
   if s:enable_flow_syntax
     call add(plugins, ['flowtype/vim-flow', { 'on_ft': 'javascript' }])
@@ -86,6 +100,9 @@ let s:enable_flow_syntax = 0
 function! SpaceVim#layers#lang#javascript#set_variable(var) abort
   let s:auto_fix = get(a:var, 'auto_fix', 0)
   let s:enable_flow_syntax = get(a:var, 'enable_flow_syntax', 0)
+  let s:format_on_save = get(a:var,
+        \ 'format_on_save',
+        \ s:format_on_save)
 endfunction
 
 function! SpaceVim#layers#lang#javascript#config() abort
@@ -100,7 +117,7 @@ function! SpaceVim#layers#lang#javascript#config() abort
         \ 'opt': ['-'],
         \ })
   call SpaceVim#mapping#space#regesit_lang_mappings('javascript',
-        \ function('s:on_ft'))
+        \ function('s:language_mappings'))
 
   if SpaceVim#layers#lsp#check_filetype('javascript')
     call SpaceVim#mapping#gd#add('javascript',
@@ -124,21 +141,30 @@ function! SpaceVim#layers#lang#javascript#config() abort
   endif
   " Only use eslint
 
-  if s:auto_fix
-    augroup SpaceVim_lang_javascript
-      autocmd!
+  augroup SpaceVim_lang_javascript
+    autocmd!
+    autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+    autocmd FileType javascript set comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,://
+    if s:auto_fix
       autocmd User NeomakeFinished call <SID>checktime_if_javascript()
-      autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
       autocmd FocusGained * call <SID>checktime_if_javascript()
-    augroup END
-  endif
+    endif
+  augroup END
   " just add a note here, when using `node -`, the Buffered stdout will not
   " be flushed by sender.
   " Use node -i will show the output of repl command.
   call SpaceVim#plugins#repl#reg('javascript', ['node', '-i'])
+
+  " Format on save
+  if s:format_on_save
+    call SpaceVim#layers#format#add_filetype({
+          \ 'filetype' : 'javascript',
+          \ 'enable' : 1,
+          \ })
+  endif
 endfunction
 
-function! s:on_ft() abort
+function! s:language_mappings() abort
   nnoremap <silent><buffer> <F4> :ImportJSWord<CR>
   nnoremap <silent><buffer> <Leader>ji :ImportJSWord<CR>
   nnoremap <silent><buffer> <Leader>jf :ImportJSFix<CR>
@@ -164,12 +190,25 @@ function! s:on_ft() abort
 
 
   if SpaceVim#layers#lsp#check_filetype('javascript')
+        \ || SpaceVim#layers#lsp#check_server('tssserver')
     nnoremap <silent><buffer> K :call SpaceVim#lsp#show_doc()<CR>
+    nnoremap <silent><buffer> gD :<C-u>call SpaceVim#lsp#go_to_typedef()<Cr>
 
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'],
-          \ 'call SpaceVim#lsp#show_doc()', 'show_document', 1)
+          \ 'call SpaceVim#lsp#show_doc()', 'show-document', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'x'],
+          \ 'call SpaceVim#lsp#references()', 'show-references', 1)
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'],
-          \ 'call SpaceVim#lsp#rename()', 'rename symbol', 1)
+          \ 'call SpaceVim#lsp#rename()', 'rename-symbol', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'h'],
+          \ 'call SpaceVim#lsp#show_line_diagnostics()', 'show-line-diagnostics', 1)
+    let g:_spacevim_mappings_space.l.w = {'name' : '+Workspace'}
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'l'],
+          \ 'call SpaceVim#lsp#list_workspace_folder()', 'list-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'a'],
+          \ 'call SpaceVim#lsp#add_workspace_folder()', 'add-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'r'],
+          \ 'call SpaceVim#lsp#remove_workspace_folder()', 'remove-workspace-folder', 1)
   else
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'], 'TernDoc',
           \ 'show document', 1)
@@ -213,3 +252,10 @@ function! s:checktime_if_javascript() abort
 endfunction
 
 " vi: et sw=2 cc=80
+
+
+function! SpaceVim#layers#lang#javascript#health() abort
+  call SpaceVim#layers#lang#javascript#plugins()
+  call SpaceVim#layers#lang#javascript#config()
+  return 1
+endfunction

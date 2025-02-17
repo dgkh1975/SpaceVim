@@ -1,11 +1,12 @@
 ---
 title: "Use Vim as a C/C++ IDE"
 categories: [tutorials, blog]
-image: https://user-images.githubusercontent.com/13142418/58743787-db2bee80-846a-11e9-9b19-17202ac542c9.png
+image: https://img.spacevim.org/58743787-db2bee80-846a-11e9-9b19-17202ac542c9.png
 description: "A general guide for using SpaceVim as C/C++ IDE, including layer configuration, requiems installation and usage."
 type: article
 comments: true
 commentsID: "Use Vim as a C/C++ IDE"
+language: "C/C++"
 ---
 
 # [Blogs](../blog/) >> Use Vim as a C/C++ IDE
@@ -66,10 +67,10 @@ You can check the value of `autocomplete_method` via `:SPSet autocomplete_method
 
 ### alternate file jumping
 
-To manage the alternate file for a project, you may need to create a `.project_alt.json` file in the root of your
+To manage alternate files for a project, you may need to create a `.project_alt.json` file in the root of your
 project.
 
-for exmaple, add following content into the `.project_alt.json` file:
+For example, add the following content into the `.project_alt.json` file:
 
 ```json
 {
@@ -78,7 +79,7 @@ for exmaple, add following content into the `.project_alt.json` file:
 }
 ```
 
-with this configuration, you can jump between the alternate file via command `:A`
+With this configuration, you can jump between alternate files via command `:A`
 
 
 ### code running
@@ -86,7 +87,7 @@ with this configuration, you can jump between the alternate file via command `:A
 The default code running key binding is `SPC l r`. It will compile and run current file asynchronously.
 And the stdout will be shown on a runner buffer.
 
-![c-cpp-runner](https://user-images.githubusercontent.com/13142418/58743787-db2bee80-846a-11e9-9b19-17202ac542c9.png)
+![c-cpp-runner](https://img.spacevim.org/58743787-db2bee80-846a-11e9-9b19-17202ac542c9.png)
 
 The default runner compile option is defineded in `clang_std` and `clang_flag` option.
 If you want to use `c11`, you can change `clang_std` option to:
@@ -94,7 +95,7 @@ If you want to use `c11`, you can change `clang_std` option to:
 ```toml
 [[layers]]
   name = "lang#c"
-  [layer.clang_std]
+  [layers.clang_std]
     cpp = "c11"
 ```
 
@@ -114,13 +115,9 @@ lint for C/C++ is `gcc`/`g++`. These commands also read configuration in `.clang
 
 ### code format
 
-The format layer use neoformat as default tool to format code, it will format current file.
-And the default key binding is `SPC b f`.
-
-```toml
-[[layers]]
-  name = "format"
-```
+In order to be able to format C/C++ files, you need to install `uncrustify`, `clangformat` or `astyle`.
+The key binding `SPC b f` is defineded in [format](../layers/format/) layer which is loaded by default.
+In this layer, the default format engine is `neoformat`.
 
 ### REPL support
 
@@ -128,4 +125,4 @@ Start a `igcc` inferior REPL process with `SPC l s i`. After the REPL process be
 send code to inferior process, all key bindings prefix with `SPC l s`, including sending line, sending selection or even
 send whole buffer.
 
-![c_repl](https://user-images.githubusercontent.com/13142418/58744043-28aa5a80-846f-11e9-94c1-e6927696e662.png)
+![c_repl](https://img.spacevim.org/58744043-28aa5a80-846f-11e9-94c1-e6927696e662.png)

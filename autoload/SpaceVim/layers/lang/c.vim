@@ -1,7 +1,7 @@
 "=============================================================================
 " c.vim --- SpaceVim lang#c layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -9,7 +9,7 @@
 " Layer doc {{{
 
 ""
-" @section lang#c, layer-lang-c
+" @section lang#c, layers-lang-c
 " @parentsection layers
 " This layer is for c/cpp development, disabled by default, to enable this
 " layer, add following snippet to your SpaceVim configuration file.
@@ -65,10 +65,12 @@
 " `clang_std` layer option.
 "
 " @subsection Key bindings
+"
 " >
-"   Mode            Key             Function
-"   ---------------------------------------------
-"   normal          SPC l r         run current file
+"   Key             Function
+"   --------------------------------
+"   SPC l r         run current file
+"   g d             jump to definition
 " <
 "
 " This layer also provides REPL support for c, the key bindings are:
@@ -80,6 +82,27 @@
 "   SPC l s l       send current line
 "   SPC l s s       send selection text
 " <
+"
+" If the lsp layer is enabled for c/c++, the following key bindings can
+" be used:
+" >
+"   key binding     Description
+"   --------------------------------
+"   g D             jump to declaration
+"   SPC l e         rename symbol
+"   SPC l x         show references
+"   SPC l h         show line diagnostics
+"   SPC l d         show document
+"   K               show document
+"   SPC l w l       list workspace folder
+"   SPC l w a       add workspace folder
+"   SPC l w r       remove workspace folder
+" <
+"
+" Known issue:
+"
+" You need to use `flush(stdout)` before `scanf()` when run code in code
+" runner.
 "
 " }}}
 
@@ -101,6 +124,8 @@ else
 endif
 " }}}
 
+let s:format_on_save = 0
+
 " Load the APIs{{{
 let s:SYSTEM = SpaceVim#api#import('system')
 let s:CPT = SpaceVim#api#import('vim#compatible')
@@ -109,7 +134,9 @@ let s:CPT = SpaceVim#api#import('vim#compatible')
 " plugins {{{
 function! SpaceVim#layers#lang#c#plugins() abort
   let plugins = []
-  if !SpaceVim#layers#lsp#check_filetype('c') && !SpaceVim#layers#lsp#check_filetype('cpp')
+  if !SpaceVim#layers#lsp#check_filetype('c')
+        \ && !SpaceVim#layers#lsp#check_filetype('cpp')
+        \ && !SpaceVim#layers#lsp#check_server('clangd')
     if g:spacevim_autocomplete_method ==# 'deoplete'
       call add(plugins, ['Shougo/deoplete-clangx', {'merged' : 0}])
     elseif g:spacevim_autocomplete_method ==# 'ycm'
@@ -148,38 +175,53 @@ endfunction
 
 " config {{{
 function! SpaceVim#layers#lang#c#config() abort
+  call SpaceVim#mapping#g_capital_d#add('c',
+        \ function('s:go_to_declaration'))
+  call SpaceVim#mapping#g_capital_d#add('cpp',
+        \ function('s:go_to_declaration'))
   call SpaceVim#mapping#gd#add('c',
         \ function('s:go_to_def'))
   call SpaceVim#mapping#gd#add('cpp',
         \ function('s:go_to_def'))
   " TODO: add stdin suport flex -t lexer.l | gcc -o lexer.o -xc -
-  let runner1 = {
+  let c_runner = {
         \ 'exe' : 'gcc',
         \ 'targetopt' : '-o',
         \ 'opt' : ['-std=' . s:clang_std.c] + s:clang_flag + ['-xc', '-'],
         \ 'usestdin' : 1,
         \ }
-  call SpaceVim#plugins#runner#reg_runner('c', [runner1, '#TEMP#'])
+  call SpaceVim#plugins#runner#reg_runner('c', [c_runner, '#TEMP#'])
   call SpaceVim#mapping#space#regesit_lang_mappings('c', function('s:language_specified_mappings'))
-  let runner2 = {
+  let cpp_runner = {
         \ 'exe' : 'g++',
         \ 'targetopt' : '-o',
         \ 'opt' : ['-std=' . s:clang_std.cpp] + s:clang_flag + ['-xc++', '-'],
         \ 'usestdin' : 1,
         \ }
-  call SpaceVim#plugins#runner#reg_runner('cpp', [runner2, '#TEMP#'])
+  call SpaceVim#plugins#runner#reg_runner('cpp', [cpp_runner, '#TEMP#'])
   if !empty(s:c_repl_command)
     call SpaceVim#plugins#repl#reg('c', s:c_repl_command)
   else
     call SpaceVim#plugins#repl#reg('c', 'igcc')
   endif
-  call SpaceVim#mapping#space#regesit_lang_mappings('cpp', funcref('s:language_specified_mappings'))
-  call SpaceVim#plugins#projectmanager#reg_callback(funcref('s:update_clang_flag'))
+  call SpaceVim#mapping#space#regesit_lang_mappings('cpp', function('s:language_specified_mappings'))
+  let objc_runner = {
+        \ 'exe' : 'gcc',
+        \ 'targetopt' : '-o',
+        \ 'opt' : ['-std=' . s:clang_std.objc] + s:clang_flag + ['-xobjc', '-'],
+        \ 'usestdin' : 1,
+        \ }
+  call SpaceVim#plugins#runner#reg_runner('objc', [objc_runner, '#TEMP#'])
+  call SpaceVim#mapping#space#regesit_lang_mappings('objc', function('s:language_specified_mappings'))
+  call SpaceVim#plugins#projectmanager#reg_callback(function('s:update_clang_flag'))
   if executable('clang')
     let g:neomake_c_enabled_makers = ['clang']
     let g:neomake_cpp_enabled_makers = ['clang']
   endif
+  let g:neomake_c_clang_remove_invalid_entries = 1
+  let g:neomake_cpp_clang_remove_invalid_entries = 1
   let g:neomake_c_gcc_remove_invalid_entries = 1
+  let g:neomake_cpp_gcc_remove_invalid_entries = 1
   let g:chromatica#enable_at_startup = 0
   let g:clighter_autostart           = 0
   augroup SpaceVim_lang_c
@@ -187,6 +229,8 @@ function! SpaceVim#layers#lang#c#config() abort
     if s:enable_clang_syntax
       auto FileType c,cpp  call s:highlight()
     endif
+    au BufRead,BufNewFile *.m set filetype=objc
+    autocmd FileType c,cpp set comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,://
   augroup END
   call add(g:spacevim_project_rooter_patterns, '.clang')
   if has('nvim')
@@ -199,6 +243,26 @@ function! SpaceVim#layers#lang#c#config() abort
     let s:highlight_cmd = 'ClStart'
   else
     let s:highlight_cmd = 'ClighterEnable'
+  endif
+
+  " Format on save
+  if s:format_on_save
+    call SpaceVim#layers#format#add_filetype({
+          \ 'filetype' : 'c',
+          \ 'enable' : 1,
+          \ })
+    call SpaceVim#layers#format#add_filetype({
+          \ 'filetype' : 'cpp',
+          \ 'enable' : 1,
+          \ })
+    call SpaceVim#layers#format#add_filetype({
+          \ 'filetype' : 'objc',
+          \ 'enable' : 1,
+          \ })
+    call SpaceVim#layers#format#add_filetype({
+          \ 'filetype' : 'objcpp',
+          \ 'enable' : 1,
+          \ })
   endif
 endfunction
 " }}}
@@ -246,6 +310,10 @@ function! SpaceVim#layers#lang#c#set_variable(var) abort
 
   let s:enable_clang_syntax = get(a:var, 'enable_clang_syntax_highlight', s:enable_clang_syntax)
 
+  let s:format_on_save = get(a:var,
+        \ 'format_on_save',
+        \ s:format_on_save)
+
   call extend(s:clang_std, get(a:var, 'clang_std', {}))
 endfunction
 " }}}
@@ -257,26 +325,26 @@ function! s:language_specified_mappings() abort
         \ 'call SpaceVim#plugins#runner#open()',
         \ 'execute current file', 1)
   if SpaceVim#layers#lsp#check_filetype('c')
+        \ || SpaceVim#layers#lsp#check_server('clangd')
     nnoremap <silent><buffer> K :call SpaceVim#lsp#show_doc()<CR>
 
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'],
           \ 'call SpaceVim#lsp#show_doc()', 'show_document', 1)
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'],
           \ 'call SpaceVim#lsp#rename()', 'rename symbol', 1)
-    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'f'],
-          \ 'call SpaceVim#lsp#references()', 'references', 1)
-
-    " these work for now with coc.nvim only
-
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'x'],
+          \ 'call SpaceVim#lsp#references()', 'show-references', 1)
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'i'],
           \ 'call SpaceVim#lsp#go_to_impl()', 'implementation', 1)
-    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 't'],
-          \ 'call SpaceVim#lsp#go_to_typedef()', 'type definition', 1)
-    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'R'],
-          \ 'call SpaceVim#lsp#refactor()', 'refactor', 1)
-    " TODO this should be gD
-    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'D'],
-          \ 'call SpaceVim#lsp#go_to_declaration()', 'declaration', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'h'],
+          \ 'call SpaceVim#lsp#show_line_diagnostics()', 'show-line-diagnostics', 1)
+    let g:_spacevim_mappings_space.l.w = {'name' : '+Workspace'}
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'l'],
+          \ 'call SpaceVim#lsp#list_workspace_folder()', 'list-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'a'],
+          \ 'call SpaceVim#lsp#add_workspace_folder()', 'add-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'r'],
+          \ 'call SpaceVim#lsp#remove_workspace_folder()', 'remove-workspace-folder', 1)
 
   endif
   let g:_spacevim_mappings_space.l.s = {'name' : '+Send'}
@@ -310,9 +378,14 @@ endfunction
 " local function: update_checkers_argv {{{
 if g:spacevim_lint_engine ==# 'neomake'
   function! s:update_checkers_argv(argv, fts) abort
+    if s:has_std(a:argv)
+      let default_std = 1
+    else
+      let default_std = 0
+    endif
     for ft in a:fts
       let g:neomake_{ft}_clang_maker = {
-            \ 'args': ['-fsyntax-only', '-Wall', '-Wextra', '-I./'] + a:argv,
+            \ 'args': ['-fsyntax-only', '-Wall', '-Wextra', '-I./'] + a:argv + (default_std ? [] : ['-std=' . s:clang_std[ft]]) + s:clang_flag,
             \ 'exe' : s:clang_executable,
             \ 'errorformat':
             \ '%-G%f:%s:,' .
@@ -366,22 +439,32 @@ function! s:update_runner(argv, fts) abort
     let default_std = 0
   endif
   if index(a:fts, 'c') !=# -1
-    let runner1 = {
+    let c_runner = {
           \ 'exe' : 'gcc',
           \ 'targetopt' : '-o',
           \ 'opt' : a:argv + (default_std ? [] : ['-std=' . s:clang_std.c]) + s:clang_flag + ['-xc', '-'],
           \ 'usestdin' : 1,
           \ }
-    call SpaceVim#plugins#runner#reg_runner('c', [runner1, '#TEMP#'])
+    call SpaceVim#plugins#runner#reg_runner('c', [c_runner, '#TEMP#'])
   endif
   if index(a:fts, 'cpp') !=# -1
-    let runner2 = {
+    let cpp_runner = {
           \ 'exe' : 'g++',
           \ 'targetopt' : '-o',
           \ 'opt' : a:argv + (default_std ? [] : ['-std=' . s:clang_std.cpp]) + s:clang_flag + ['-xc++', '-'],
           \ 'usestdin' : 1,
           \ }
-    call SpaceVim#plugins#runner#reg_runner('cpp', [runner2, '#TEMP#'])
+    call SpaceVim#plugins#runner#reg_runner('cpp', [cpp_runner, '#TEMP#'])
+  endif
+  " update clang_flag for objective-c
+  if index(a:fts, 'objc') !=# -1
+    let cpp_runner = {
+          \ 'exe' : 'gcc',
+          \ 'targetopt' : '-o',
+          \ 'opt' : a:argv + (default_std ? [] : ['-std=' . s:clang_std.objc]) + s:clang_flag + ['-xobjc', '-'],
+          \ 'usestdin' : 1,
+          \ }
+    call SpaceVim#plugins#runner#reg_runner('objc', [cpp_runner, '#TEMP#'])
   endif
 endfunction
 " }}}
@@ -402,12 +485,48 @@ function! s:update_neoinclude(argv, fts) abort
 endfunction
 " }}}
 
+" local function: go_to_declaration {{{
+function! s:go_to_declaration() abort
+  if !SpaceVim#layers#lsp#check_filetype(&ft)
+        \ && !SpaceVim#layers#lsp#check_server('clangd')
+    try
+      exe 'ts' expand('<cword>')
+    catch /^Vim\%((\a\+)\)\=:E426/
+      echohl WarningMsg
+      echo 'tag not found: ' . expand('<cword>')
+      echohl NONE
+    endtry
+  else
+    call SpaceVim#lsp#go_to_declaration()
+  endif
+endfunction
+" }}}
+
 " local function: go_to_def {{{
 function! s:go_to_def() abort
   if !SpaceVim#layers#lsp#check_filetype(&ft)
-    execute "norm! g\<c-]>"
+        \ && !SpaceVim#layers#lsp#check_server('clangd')
+    try
+      exe 'ts' expand('<cword>')
+    catch /^Vim\%((\a\+)\)\=:E426/
+      echohl WarningMsg
+      echo 'tag not found: ' . expand('<cword>')
+      echohl NONE
+    endtry
   else
     call SpaceVim#lsp#go_to_def()
   endif
 endfunction
 " }}}
+
+function! SpaceVim#layers#lang#c#health() abort
+  call SpaceVim#layers#lang#c#plugins()
+  call SpaceVim#layers#lang#c#config()
+  return 1
+endfunction
+
+function! SpaceVim#layers#lang#c#loadable() abort
+
+  return 1
+
+endfunction

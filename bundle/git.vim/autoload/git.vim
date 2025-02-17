@@ -1,6 +1,6 @@
 "=============================================================================
 " git.vim
-" Copyright (c) 2016-2021 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
@@ -29,6 +29,12 @@ function! git#run(...) abort
         call git#config#run(a:000[1:])
     elseif cmd ==# 'diff'
         call git#diff#run(a:000[1:])
+    elseif cmd ==# 'rm'
+        call git#rm#run(a:000[1:])
+    elseif cmd ==# 'clean'
+        call git#clean#run(a:000[1:])
+    elseif cmd ==# 'mv'
+        call git#mv#run(a:000[1:])
     elseif cmd ==# 'log'
         call git#log#run(a:000[1:])
     elseif cmd ==# 'reflog'
@@ -41,12 +47,16 @@ function! git#run(...) abort
         call git#blame#run(a:000[1:])
     elseif cmd ==# 'rebase'
         call git#rebase#run(a:000[1:])
+    elseif cmd ==# 'remote'
+        call git#remote#run(a:000[1:])
     elseif cmd ==# 'fetch'
         call git#fetch#run(a:000[1:])
     elseif cmd ==# 'commit'
         call git#commit#run(a:000[1:])
     elseif cmd ==# 'branch'
         call git#branch#run(a:000[1:])
+    elseif cmd ==# 'tag'
+        call git#tag#run(a:000[1:])
     elseif cmd ==# 'checkout'
         call git#checkout#run(a:000[1:])
     elseif cmd ==# 'cherry-pick'
@@ -72,15 +82,23 @@ function! git#complete(ArgLead, CmdLine, CursorPos) abort
         return join(['add', 'push', 'status', 'commit', 'diff',
                     \ 'merge', 'rebase', 'branch', 'checkout',
                     \ 'fetch', 'reset', 'log', 'config', 'reflog',
-                    \ 'blame', 'pull', 'stash', 'cherry-pick',
+                    \ 'blame', 'pull', 'stash', 'cherry-pick', 'rm', 'mv', 'remote', 'clean', 'shortlog', 'tag', 'grep'
                     \ ],
                     \ "\n")
     elseif str =~# '^Git\s\+add\s\+.*$'
         return git#add#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+rm\s\+.*$'
+        return git#rm#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+remote\s\+.*$'
+        return git#remote#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+mv\s\+.*$'
+        return git#mv#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     elseif str =~# '^Git\s\+push\s\+.*$'
         return git#push#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     elseif str =~# '^Git\s\+diff\s\+.*$'
         return git#diff#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+tag\s\+.*$'
+        return git#tag#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     elseif str =~# '^Git\s\+blame\s\+.*$'
         return git#blame#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     elseif str =~# '^Git\s\+merge\s\+.*$'
@@ -99,6 +117,10 @@ function! git#complete(ArgLead, CmdLine, CursorPos) abort
         return git#config#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     elseif str =~# '^Git\s\+reflog\s\+.*$'
         return git#reflog#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+clean\s\+.*$'
+        return git#clean#complete(a:ArgLead, a:CmdLine, a:CursorPos)
+    elseif str =~# '^Git\s\+rebase\s\+.*$'
+        return git#rebase#complete(a:ArgLead, a:CmdLine, a:CursorPos)
     else
         return ''
     endif

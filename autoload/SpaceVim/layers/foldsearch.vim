@@ -1,11 +1,33 @@
 "=============================================================================
 " foldsearch.vim --- Fold search support in SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
+
+""
+" @section foldsearch, layers-foldsearch
+" @parentsection layers
+" `foldsearch` layer provides key bindings to searching text and fold
+" searching results. This layer is not enabled by default, to enable this
+" layer, add following code to your configuration file:
+" >
+"   [[layers]]
+"     name = 'foldsearch'
+" <
+" @subsection Key bindings
+"
+" The following key bindings will be definded when the `foldsearch` layer is
+" loaded.
+" >
+"   Key Binding   Description
+"   SPC F w       searching with input word
+"   SPC F W       searching with cursor word
+"   SPC F p       searching with regexp
+"   SPC F e       end foldsearch
+" <
 
 if exists('s:filename')
   " because this script will be loaded twice. This is the feature of vim,
@@ -13,11 +35,40 @@ if exists('s:filename')
   finish
 endif
 
+function! SpaceVim#layers#foldsearch#health() abort
+  call SpaceVim#layers#foldsearch#config()
+  return 1
+endfunction
+
+function! SpaceVim#layers#foldsearch#plugins() abort
+
+  return []
+
+endfunction
+
+function! SpaceVim#layers#foldsearch#set_variable(var) abort
+
+  
+
+endfunction
+
+function! SpaceVim#layers#foldsearch#get_options() abort
+
+  return []
+
+endfunction
+
+function! SpaceVim#layers#foldsearch#loadable() abort
+
+  return 1
+
+endfunction
+
 let s:filename = expand('<sfile>:~')
 let s:lnum = expand('<slnum>') + 2
 function! SpaceVim#layers#foldsearch#config()
 
-  let g:_spacevim_mappings_space.F = {'name' : '+Foldsearch'}
+  let g:_spacevim_mappings_space.F.name = '+Foldsearch/Tabs'
   let lnum = expand('<slnum>') + s:lnum - 1
   call SpaceVim#mapping#space#def('nnoremap', ['F', 'w'], 'call call('
         \ . string(s:_function('s:foldsearch_word')) . ', [])',

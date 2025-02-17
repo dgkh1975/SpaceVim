@@ -1,7 +1,7 @@
 "=============================================================================
 " pmd.vim --- Integrates PMD using Vim quickfix mode
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Shidong Wang < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Shidong Wang < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -92,6 +92,12 @@ endfunction
 " @vimlint(EVL103, 0, a:event)
 
 function! SpaceVim#plugins#pmd#run(...) abort
+  if !executable(g:Pmd_Cmd[0])
+    echohl WarningMsg
+    echo g:Pmd_Cmd[0] .. ' is not executable'
+    echohl None
+    return
+  endif
   let argv = g:Pmd_Cmd + a:000
   if index(a:000, '-R') == -1
     let argv += g:Pmd_Rulesets

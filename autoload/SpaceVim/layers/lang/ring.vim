@@ -1,13 +1,13 @@
 "=============================================================================
 " ring.vim --- ring language support in SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section lang#ring, layer-lang-ring
+" @section lang#ring, layers-lang-ring
 " @parentsection layers
 " This layer is for ring development, disabled by default, to enable this
 " layer, add following snippet to your SpaceVim configuration file.
@@ -20,7 +20,7 @@
 "
 " 1. ring_repl: Set the path of ring repl.
 " >
-"   [layers]
+"   [[layers]]
 "     name = "lang#ring"
 "     ring_repl = "/path/to/repl.ring"
 " <
@@ -83,4 +83,10 @@ endfunction
 
 function! SpaceVim#layers#lang#ring#get_options() abort
   return ['ring_repl']
+endfunction
+
+function! SpaceVim#layers#lang#ring#health() abort
+  call SpaceVim#layers#lang#ring#plugins()
+  call SpaceVim#layers#lang#ring#config()
+  return 1
 endfunction

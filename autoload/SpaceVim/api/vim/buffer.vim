@@ -1,7 +1,7 @@
 "=============================================================================
 " buffer.vim --- SpaceVim buffer API
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -32,6 +32,14 @@
 "     initfunc: the function which will be call after creating buffer
 "
 "     cmd: the ex command which will be run after the new buffer is created
+"
+" get_option(bufnr, name)
+"
+" Gets a buffer option value. 
+"
+" set_option(buf, opt, value)  
+"
+" Set a buffer option value.
 
 
 let s:self = {}
@@ -46,6 +54,14 @@ else
   endfunction
 endif
 
+function! s:self.set_var(buf, var, val) abort
+  return setbufvar(a:buf, a:var, a:val)
+endfunction
+
+function! s:self.get_var(buf, var) abort
+  return getbufvar(a:buf, a:var)
+endfunction
+
 " bufnr needs atleast one argv before patch-8.1.1924 has('patch-8.1.1924')
 function! s:self.bufnr(...) abort
   if has('patch-8.1.1924')
@@ -55,6 +71,19 @@ function! s:self.bufnr(...) abort
       return bufnr('%')
     else
       return call('bufnr', a:000)
+    endif
+  endif
+endfunction
+
+" bufname needs atleast one argv before patch-8.1.1924 has('patch-8.1.1924')
+function! s:self.bufname(...) abort
+  if has('patch-8.1.1924')
+    return call('bufname', a:000)
+  else
+    if a:0 ==# 0
+      return bufname('%')
+    else
+    return call('bufname', a:000)
     endif
   endif
 endfunction
@@ -92,8 +121,11 @@ if exists('*nvim_create_buf')
 else
   function! s:self.create_buf(listed, scratch) abort
     let bufnr = self.bufadd('')
-    " in vim, a:listed must be number, what the fuck!
-    " why can not use v:true and v:false
+    if exists('*bufloaded')
+          \ && exists('*bufload')
+          \ && !bufloaded(bufnr)
+      call bufload(bufnr)
+    endif
     call setbufvar(bufnr, '&buflisted', a:listed ? 1 : 0)
     if a:scratch
       call setbufvar(bufnr, '&swapfile', 0)
@@ -145,17 +177,20 @@ function! s:self.filter_do(expr) abort
   endfor
 endfunction
 
-if exists('*nvim_buf_line_count')
+" define self.line_count(buf)
+" use nvim_buf_line_count if possible
+if exists('*nvim_buf_line_count') " {{{
   function! s:self.line_count(buf) abort
     return nvim_buf_line_count(a:buf)
-  endfunction
-elseif get(g:, '_spacevim_if_lua', 0)
+  endfunction " }}}
+" if +lua is enabled.
+elseif get(g:, '_spacevim_if_lua', 0) " {{{
   " @vimlint(EVL103, 1, a:buf)
   function! s:self.line_count(buf) abort
     " lua numbers are floats, so use float2nr
     return float2nr(luaeval('#vim.buffer(vim.eval("a:buf"))'))
   endfunction
-  " @vimlint(EVL103, 0, a:buf)
+  " @vimlint(EVL103, 0, a:buf) }}}
 else
   function! s:self.line_count(buf) abort
     return len(getbufline(a:buf, 1, '$'))
@@ -163,48 +198,61 @@ else
 endif
 
 
-" just same as nvim_buf_set_lines
+" buffer.buf_set_lines(buffer, start, end, strict_indexing, replacement)
+"
+" this function is just same as nvim_buf_set_lines.
 function! s:self.buf_set_lines(buffer, start, end, strict_indexing, replacement) abort
   if !bufexists(a:buffer)
     return
   endif
   let ma = getbufvar(a:buffer, '&ma')
   call setbufvar(a:buffer,'&ma', 1)
-  if exists('*nvim_buf_set_lines')
+  " if the function `nvim_buf_set_lines` exists
+  if exists('*nvim_buf_set_lines') " {{{
     call nvim_buf_set_lines(a:buffer, a:start, a:end, a:strict_indexing, a:replacement)
+    " }}}
   elseif exists('*deletebufline') && exists('*bufload')
     " patch-8.1.0039 deletebufline()
     " patch-8.1.0037 appendbufline()
     " patch-8.0.1039 setbufline()
     " patch-8.1.1610 bufadd() bufload()
+
+    " in vim, setbufline will not load buffer automatically
+    " but in neovim, nvim_buf_set_lines will do it.
+    " @fixme vim issue #5044
+    " https://github.com/vim/vim/issues/5044
+    if !bufloaded(a:buffer)
+      call bufload(a:buffer)
+    endif
+
     let lct = self.line_count(a:buffer)
-    if a:start > lct
-      return
-    elseif a:start >= 0 && a:end > a:start
-      " in vim, setbufline will not load buffer automatically
-      " but in neovim, nvim_buf_set_lines will do it.
-      " @fixme vim issue #5044
-      " https://github.com/vim/vim/issues/5044
-      if !bufloaded(a:buffer)
-        call bufload(a:buffer)
-      endif
-      " 0, 1 len = 1 a:replacement = 4
-      if len(a:replacement) == a:end - a:start
-        for i in range(a:start, a:end - 1)
-          call setbufline(a:buffer, i + 1, a:replacement[i - a:start])
-        endfor
+    let start = a:start + (a:start < 0 ? lct + 1 : 0)
+    let end = a:end + (a:end < 0 ? lct + 1 : 0)
+
+    if start < 0 || end < 0 || start > lct || end > lct
+      if a:strict_indexing
+      " @fixme raise an error
+        return
       else
-        let endtext = a:end >= lct ? [] : getbufline(a:buffer, a:end + 1, '$')
-        let replacement = a:replacement + endtext
-        for i in range(a:start, len(replacement) + a:start - 1)
-          call setbufline(a:buffer, i + 1, replacement[i - a:start])
-        endfor
-        call deletebufline(a:buffer,len(replacement) + a:start + 1, '$')
+        let start = start < 0 ? 0 : start > lct ? lct : start
+        let end = end < 0 ? 0 : end > lct ? lct : end
       endif
-    elseif a:start >= 0 && a:end < 0 && lct + a:end >= a:start
-      call self.buf_set_lines(a:buffer, a:start, lct + a:end + 1, a:strict_indexing, a:replacement)
-    elseif a:start <= 0 && a:end > a:start && a:end < 0 && lct + a:start >= 0
-      call self.buf_set_lines(a:buffer, lct + a:start + 1, lct + a:end + 2, a:strict_indexing, a:replacement)
+    endif
+    if start > end
+      " @fixme raise an error
+      return
+    endif
+
+    " in neovim, indexing is zero-based, end-exclusive
+    " but in vim, indexing is one-based, end-inclusive
+    let tochange = min([len(a:replacement), end - start])
+    if tochange > 0
+      call setbufline(a:buffer, start + 1, a:replacement[:tochange-1])
+    endif
+    if end > start + tochange
+      call deletebufline(a:buffer, start + 1 + tochange, end)
+    else
+      call appendbufline(a:buffer, start + tochange, a:replacement[tochange:])
     endif
   elseif has('python')
 py << EOF
@@ -221,6 +269,10 @@ lines = vim.eval("a:replacement")
 vim.buffers[bufnr][start_line:end_line] = lines
 EOF
   elseif has('python3')
+    " https://github.com/vim/vim/issues/3117
+    " https://github.com/Azure/WALinuxAgent/issues/2326
+    " https://github.com/powerline/powerline/issues/1925#issuecomment-402635097
+  silent! python3 1
 py3 << EOF
 import vim
 import string
@@ -276,11 +328,14 @@ function! s:self.displayArea() abort
         \ ]
 endfunction
 
+function! s:self.open_pos(cmd, file, line, col) abort
+    exe 'silent ' . a:cmd . ' ' . a:file
+    call cursor(a:line, a:col)
+endfunction
+
 function! s:self.add_highlight(bufnr, hl, line, col, long) abort
   if exists('*nvim_buf_add_highlight')
     call nvim_buf_add_highlight(a:bufnr, 0, a:hl, a:line, a:col, a:col + a:long)
-  else
-    call SpaceVim#logger#warn('vim#buffer.add_highlight api only support neovim', 0)
   endif
 endfunction
 

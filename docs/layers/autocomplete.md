@@ -17,16 +17,17 @@ description: "Autocomplete code within SpaceVim, fuzzy find the candidates from 
   - [Show snippets in auto-completion popup](#show-snippets-in-auto-completion-popup)
 - [Key bindings](#key-bindings)
   - [Completion](#completion)
-  - [Neosnippet](#neosnippet)
+  - [Snippets](#snippets)
 
 <!-- vim-markdown-toc -->
 
 ## Description
 
-This layer provides auto-completion to SpaceVim.
+This layer provides auto-completion in SpaceVim.
 
 The following completion engines are supported:
 
+- nvim-cmp - neovim >= 0.9.0
 - [neocomplete](https://github.com/Shougo/neocomplete.vim) - vim with `+lua`
 - [neocomplcache](https://github.com/Shougo/neocomplcache.vim) - vim without `+lua`
 - [deoplete](https://github.com/Shougo/deoplete.nvim) - neovim with `+python3`
@@ -39,7 +40,7 @@ Snippets are supported via [neosnippet](https://github.com/Shougo/neosnippet.vim
 
 ## Install
 
-To use this configuration layer, add following snippet to your custom configuration file.
+To use this configuration layer, add the following snippet to your custom configuration file:
 
 ```toml
 [[layers]]
@@ -50,9 +51,8 @@ To use this configuration layer, add following snippet to your custom configurat
 
 ### Completion engine
 
-By default, SpaceVim will choose the completion engine automatically base on your vim version.
-But you can choose the completion engine to be used
-with the following variable:
+By default, SpaceVim will choose the completion engine automatically based on your vim version.
+But you can choose the completion engine to be used with the following variable:
 
 - `autocomplete_method`: the possible values are:
   - `ycm`: for YouCompleteMe
@@ -61,6 +61,7 @@ with the following variable:
   - `deoplete`
   - `asyncomplete`
   - `completor`
+  - `nvim-cmp`
 
 here is an example:
 
@@ -114,7 +115,7 @@ By default, the parens will be completed automatically, to disabled this feature
 You can customize the user experience of autocompletion with the following layer variables:
 
 1. `auto_completion_return_key_behavior` set the action to perform
-   when the `Return`/`Enter` key is pressed, the possible values are:
+   when the `Return`/`Enter` key is pressed. the possible values are:
    - `complete` completes with the current selection
    - `smart` completes with current selection and expand snippet or argvs
    - `nil`
@@ -165,17 +166,23 @@ To disable this feature, set the variable `auto_completion_enable_snippets_in_po
 
 ### Completion
 
-| Key bindings | Description                                   |
-| ------------ | --------------------------------------------- |
-| `Ctrl-n`     | select next candidate                         |
-| `Ctrl-p`     | select previous candidate                     |
-| `<Tab>`      | base on `auto_completion_tab_key_behavior`    |
-| `Shift-Tab`  | select previous candidate                     |
-| `<Return>`   | base on `auto_completion_return_key_behavior` |
+| Key bindings | Description								    |
+| ------------ | -----------------------------------------------|
+| `Ctrl-n`     | select next candidate						    |
+| `Ctrl-p`     | select previous candidate					    |
+| `<Tab>`      | based on `auto_completion_tab_key_behavior`    |
+| `Shift-Tab`  | select previous candidate					    |
+| `<Return>`   | based on `auto_completion_return_key_behavior` |
 
-### Neosnippet
+### Snippets
 
 | Key Binding | Description                                                    |
 | ----------- | -------------------------------------------------------------- |
 | `M-/`       | Expand a snippet if text before point is a prefix of a snippet |
-| `SPC i s`   | List all current yasnippets for inserting                      |
+| `SPC i s`   | List all current snippets for inserting                      |
+| `<Leader> f s` | Fuzzy find Ultisnips snippets if `snippet_engine = "ultisnips"` and the layer [`telescope`](../telescope) is used. Thanks to [telescope-ultisnips.nvim](https://github.com/fhill2/telescope-ultisnips.nvim)|
+
+NOTE: `SPC i s` requires that at least one fuzzy search layer be loaded. If the `snippet_engine` is `neosnippet`.
+The fuzzy finder layer can be `leaderf`, `denite` or `unite`. For `ultisnips`, you can use `leaderf` or `unite` layer.
+
+

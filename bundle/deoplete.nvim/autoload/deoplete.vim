@@ -64,7 +64,7 @@ function! deoplete#manual_complete(...) abort
   call deoplete#init#_prev_completion()
 
   " Start complete.
-  return "\<C-r>=deoplete#mapping#_rpcrequest_wrapper("
+  return "\<Cmd>call deoplete#mapping#_rpcrequest_wrapper("
         \ . string(get(a:000, 0, [])) . ")\<CR>"
 endfunction
 function! deoplete#close_popup() abort
@@ -72,7 +72,6 @@ function! deoplete#close_popup() abort
   return pumvisible() ? "\<C-y>" : ''
 endfunction
 function! deoplete#smart_close_popup() abort
-  call deoplete#handler#_skip_next_completion()
   return pumvisible() ? "\<C-e>" : ''
 endfunction
 function! deoplete#cancel_popup() abort
@@ -87,4 +86,8 @@ function! deoplete#undo_completion() abort
 endfunction
 function! deoplete#complete_common_string() abort
   return deoplete#mapping#_complete_common_string()
+endfunction
+function! deoplete#can_complete() abort
+  return !empty(get(get(g:, 'deoplete#_context', {}), 'candidates', []))
+        \ && deoplete#mapping#_can_complete()
 endfunction

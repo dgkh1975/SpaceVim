@@ -1,17 +1,71 @@
 "=============================================================================
 " php.vim --- lang#php layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Shidong Wang < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Shidong Wang < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 
 ""
-" @section lang#php, layer-lang-php
+" @section lang#php, layers-lang-php
 " @parentsection layers
-" This layer is for PHP development. It proides code completion, syntax
-" checking, and jump to definition.
+" This layer is for php development, disabled by default, to enable this
+" layer, add following snippet to your SpaceVim configuration file.
+" >
+"   [[layers]]
+"     name = 'lang#php'
+" <
+"
+" @subsection layer options
+"
+" 1. `php_interpreter`: Set the PHP interpreter, by default, it is `php`
+" >
+"   [[layers]]
+"     name = 'lang#php'
+"     php_interpreter = 'path/to/php'
+" <
+"
+" @subsection Key bindings
+" >
+"   Key             Function
+"   --------------------------------
+"   SPC l r         run current file
+"   g d             jump to definition
+" <
+"
+" This layer also provides REPL support for php, the key bindings are:
+" >
+"   Key             Function
+"   ---------------------------------------------
+"   SPC l s i       Start a inferior REPL process
+"   SPC l s b       send whole buffer
+"   SPC l s l       send current line
+"   SPC l s s       send selection text
+" <
+"
+" If the lsp layer is enabled for php, the following key bindings can
+" be used:
+" >
+"   key binding     Description
+"   --------------------------------
+"   g D             jump to declaration
+"   SPC l e         rename symbol
+"   SPC l x         show references
+"   SPC l h         show line diagnostics
+"   SPC l d         show document
+"   K               show document
+"   SPC l w l       list workspace folder
+"   SPC l w a       add workspace folder
+"   SPC l w r       remove workspace folder
+" <
+"
+
+if exists('s:php_interpreter')
+  finish
+endif
+
+let s:php_interpreter = 'php'
 
 
 
@@ -20,9 +74,14 @@ function! SpaceVim#layers#lang#php#plugins() abort
   call add(plugins, ['StanAngeloff/php.vim', { 'on_ft' : 'php'}])
   call add(plugins, ['2072/PHP-Indenting-for-VIm', { 'on_ft' : 'php'}])
   if SpaceVim#layers#lsp#check_filetype('php')
+        \ || SpaceVim#layers#lsp#check_server('phpactor')
     call add(plugins, ['phpactor/phpactor', {'on_ft' : 'php', 'build' : 'composer install --no-dev -o'}])
   else
-    call add(plugins, ['shawncplus/phpcomplete.vim', { 'on_ft' : 'php'}])
+    if exists('*popup_create')
+      call add(plugins, [g:_spacevim_root_dir . 'bundle/phpcomplete.vim', {'merged' : 0}])
+    else
+      call add(plugins, [g:_spacevim_root_dir . 'bundle/phpcomplete.vim-vim7', {'merged' : 0}])
+    endif
   endif
   return plugins
 endfunction
@@ -31,16 +90,21 @@ let s:auto_fix = 0
 
 function! SpaceVim#layers#lang#php#set_variable(var) abort
   let s:auto_fix = get(a:var, 'auto_fix', 0)
+  let s:php_interpreter = get(a:var, 'php_interpreter', s:php_interpreter)
 endfunction
 
 function! SpaceVim#layers#lang#php#config() abort
-  call SpaceVim#plugins#runner#reg_runner('php', 'php %s')
-  call SpaceVim#plugins#repl#reg('php', ['php', '-a'])
+  call SpaceVim#plugins#runner#reg_runner('php', s:php_interpreter . ' %s')
+  call SpaceVim#plugins#repl#reg('php', [s:php_interpreter, '-a'])
   call SpaceVim#mapping#space#regesit_lang_mappings('php',
         \ function('s:on_ft'))
   if SpaceVim#layers#lsp#check_filetype('php')
+        \ || SpaceVim#layers#lsp#check_server('phpactor')
+        \ || SpaceVim#layers#lsp#check_server('intelephense')
     call SpaceVim#mapping#gd#add('php',
           \ function('SpaceVim#lsp#go_to_def'))
+    call SpaceVim#mapping#g_capital_d#add('php',
+          \ function('SpaceVim#lsp#go_to_declaration'))
   endif
 
   if s:auto_fix
@@ -60,12 +124,25 @@ endfunction
 
 function! s:on_ft() abort
   if SpaceVim#layers#lsp#check_filetype('php')
+        \ || SpaceVim#layers#lsp#check_server('phpactor')
+        \ || SpaceVim#layers#lsp#check_server('intelephense')
     nnoremap <silent><buffer> K :call SpaceVim#lsp#show_doc()<CR>
 
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'],
-          \ 'call SpaceVim#lsp#show_doc()', 'show_document', 1)
+          \ 'call SpaceVim#lsp#show_doc()', 'show-document', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'x'],
+          \ 'call SpaceVim#lsp#references()', 'show-references', 1)
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'],
-          \ 'call SpaceVim#lsp#rename()', 'rename symbol', 1)
+          \ 'call SpaceVim#lsp#rename()', 'rename-symbol', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'h'],
+          \ 'call SpaceVim#lsp#show_line_diagnostics()', 'show-line-diagnostics', 1)
+    let g:_spacevim_mappings_space.l.w = {'name' : '+Workspace'}
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'l'],
+          \ 'call SpaceVim#lsp#list_workspace_folder()', 'list-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'a'],
+          \ 'call SpaceVim#lsp#add_workspace_folder()', 'add-workspace-folder', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'w', 'r'],
+          \ 'call SpaceVim#lsp#remove_workspace_folder()', 'remove-workspace-folder', 1)
   endif
   call SpaceVim#mapping#space#langSPC('nmap', ['l','r'],
         \ 'call SpaceVim#plugins#runner#open()',
@@ -118,4 +195,10 @@ function! s:preferLocalPHPMD() abort
   if filereadable(l:phpmd_path) && !exists('b:neomake_php_phpmd_args')
     let b:neomake_php_phpmd_args = ['%:p', 'text', l:phpmd_path]
   endif
+endfunction
+
+function! SpaceVim#layers#lang#php#health() abort
+  call SpaceVim#layers#lang#php#plugins()
+  call SpaceVim#layers#lang#php#config()
+  return 1
 endfunction

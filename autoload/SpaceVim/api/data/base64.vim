@@ -1,7 +1,7 @@
 "=============================================================================
 " base64.vim --- SpaceVim base64 API
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -10,7 +10,8 @@ let s:self = {}
 
 let s:CMP = SpaceVim#api#import('vim#compatible')
 
-if s:CMP.has('python')
+if s:CMP.has('python') && !has('nvim-0.7')
+  " https://github.com/neovim/neovim/pull/17222
   " @vimlint(EVL103, 1, a:text)
   function! s:self.encode(text) abort
     py import vim

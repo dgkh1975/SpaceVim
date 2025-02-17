@@ -1,13 +1,13 @@
 "=============================================================================
 " coffeescript.vim --- lang#coffeescript layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section lang#coffeescript, layer-lang-coffeescript
+" @section lang#coffeescript, layers-lang-coffeescript
 " @parentsection layers
 " This layer is for coffeescript development, disabled by default, to enable this
 " layer, add following snippet to your SpaceVim configuration file.
@@ -32,9 +32,15 @@
 "   SPC l s l       send current line
 "   SPC l s s       send selection text
 " <
-"
+
+
+if exists('s:coffee_interpreter')
+  finish
+endif
 
 let s:SYS = SpaceVim#api#import('system')
+
+let s:coffee_interpreter = 'coffee' . (s:SYS.isWindows ? '.CMD' : '')
 
 function! SpaceVim#layers#lang#coffeescript#plugins() abort
   let plugins = []
@@ -45,13 +51,18 @@ endfunction
 
 function! SpaceVim#layers#lang#coffeescript#config() abort
   call SpaceVim#plugins#runner#reg_runner('coffee', {
-        \ 'exe' : 'coffee' . (s:SYS.isWindows ? '.CMD' : ''),
+        \ 'exe' : s:coffee_interpreter,
         \ 'usestdin' : 1,
         \ 'opt': ['-s'],
         \ })
   " call SpaceVim#plugins#runner#reg_runner('coffee', 'coffee %s')
-  call SpaceVim#plugins#repl#reg('coffee', ['coffee' . (s:SYS.isWindows ? '.CMD' : ''), '-i'])
+  call SpaceVim#plugins#repl#reg('coffee', [s:coffee_interpreter, '-i'])
   call SpaceVim#mapping#space#regesit_lang_mappings('coffee', function('s:language_specified_mappings'))
+
+  augroup spacevim_layer_lang_coffeescript
+    autocmd!
+    autocmd FileType coffee call SpaceVim#util#check_if_expand_tab()
+  augroup END
 
 endfunction
 
@@ -98,4 +109,13 @@ endfunction
 
 function! s:filter_coffee_lint(lines, job) abort
   let a:lines = []
+endfunction
+function! SpaceVim#layers#lang#coffeescript#set_variable(var) abort
+  let s:coffee_interpreter = get(a:var, 'coffee_interpreter', s:coffee_interpreter)
+endfunction
+
+function! SpaceVim#layers#lang#coffeescript#health() abort
+  call SpaceVim#layers#lang#coffeescript#plugins()
+  call SpaceVim#layers#lang#coffeescript#config()
+  return 1
 endfunction

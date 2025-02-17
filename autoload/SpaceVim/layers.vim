@@ -1,37 +1,85 @@
 "=============================================================================
 " layers.vim --- layers public API
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
 " @section Layers, layers
-"   SpaceVim support such layers:
+"   Layers help collecting related packages together to provides features.
+" This approach helps keep configuration organized and reduces overhead for
+" the user by keeping them from having to think about what packages to install.
 "
-" languages:
-"   
-" https://www.scriptol.com/programming/list-programming-languages.php#query-language
+" @subsection Enable layers
+"
+" By default SpaceVim enables these layers:
+"
+" 1. `autocomplete`
+" 2. `checkers`
+" 3. `format`
+" 4. `edit`
+" 5. `ui`
+" 5. `core`
+" 6. `core#banner`
+" 7. `core#statusline`
+" 8. `core#tabline`
+"
+" To enable a specific layer you need to edit SpaceVim's custom configuration files.
+" The key binding for opening the configuration files.s `SPC f v d`.
+"
+" The following example shows how to load `shell` layer with some specified options:
+" >
+"   [[layers]]
+"     name = 'shell'
+"     default_position = 'top'
+"     default_height = 30
+" <
+"
+" @subsection Disable layers
+"
+" Some layers are enabled by default. The following example shows how to disable `shell` layer:
+" >
+"   [[layers]]
+"     name = 'shell'
+"     enable = false
+" <
 
 let s:enabled_layers = []
 let s:layers_vars = {}
 
 
 let s:SYS = SpaceVim#api#import('system')
+let s:CMP = SpaceVim#api#import('vim#compatible')
 
 ""
 " Load the {layer} you want. For all the layers SpaceVim supports, see @section(layers).
-" the second argv is the layer variable.
+" the second argv is the layer variable. For example:
+" >
+"   call SpaceVim#layers#load('autocomplete',
+"     \ {
+"     \  'auto_completion_delay' : 50,
+"     \ } 
+"     \ )
+" <
 function! SpaceVim#layers#load(layer, ...) abort
   if a:layer ==# '-l'
-    call s:list_layers()
+    if has('nvim')
+      lua require('spacevim.layer').load('-l')
+    else
+      call s:list_layers()
+    endif
+    return
+  elseif empty(a:layer) || type(a:layer) !=# type('')
     return
   endif
+  call SpaceVim#logger#info('load layer:' . a:layer)
   let loadable = 1
   try
-      let loadable = SpaceVim#layers#{a:layer}#loadable()
+    let loadable = SpaceVim#layers#{a:layer}#loadable()
   catch /^Vim\%((\a\+)\)\=:E117/
+    call SpaceVim#logger#info(a:layer . ' layer do not implement loadable function')
   endtry
   if index(s:enabled_layers, a:layer) == -1
     if loadable
@@ -40,7 +88,7 @@ function! SpaceVim#layers#load(layer, ...) abort
       call SpaceVim#logger#warn('Failed to load '
             \ . a:layer
             \ . ' layer, read :h SpaceVim-layer-' . a:layer 
-            \ . ' for more info!', 0)
+            \ . ' for more info!')
     endif
   endif
   if a:0 == 1 && type(a:1) == 4
@@ -48,6 +96,7 @@ function! SpaceVim#layers#load(layer, ...) abort
       call SpaceVim#layers#{a:layer}#set_variable(a:1)
       let s:layers_vars[a:layer] = a:1
     catch /^Vim\%((\a\+)\)\=:E117/
+      call SpaceVim#logger#info(a:layer . ' layer do not implement set_variable function')
     endtry
   endif
   if a:0 > 0 && type(a:1) == 1 
@@ -55,6 +104,7 @@ function! SpaceVim#layers#load(layer, ...) abort
       call SpaceVim#layers#load(l)
     endfor
   endif
+  call SpaceVim#logger#info('layer loaded.')
 endfunction
 
 function! SpaceVim#layers#disable(layer) abort
@@ -79,7 +129,7 @@ function! s:list_layers() abort
 endfunction
 
 function! s:find_layers() abort
-  let layers = SpaceVim#util#globpath(&rtp, 'autoload/SpaceVim/layers/**/*.vim')
+  let layers = s:CMP.globpath(&rtp, 'autoload/SpaceVim/layers/**/*.vim')
   let pattern = s:SYS.isWindows ? '\\autoload\\SpaceVim\\layers\\' : '/autoload/SpaceVim/layers/'
   let rst = []
   for layer in layers
@@ -134,6 +184,24 @@ function! SpaceVim#layers#report() abort
   endfor
   let info .= "```\n"
   return info
+endfunction
+
+function! SpaceVim#layers#list() abort
+
+  let files = s:CMP.globpath('.', 'autoload/SpaceVim/layers/**/*.vim')
+  let pattern = s:SYS.isWindows ? '\\autoload\\SpaceVim\\layers\\' : '/autoload/SpaceVim/layers/'
+  let layers = []
+  for file in files
+    if s:SYS.isWindows
+      let layer = substitute(file[matchend(file, pattern):-5], '\\', '/', 'g')
+    else
+      let layer = file[matchend(file, pattern):-5]
+    endif
+    call add(layers, layer)
+  endfor
+
+  return map(layers, "substitute(v:val, '/', '#','g')")
+
 endfunction
 
 

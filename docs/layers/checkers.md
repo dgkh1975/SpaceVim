@@ -30,12 +30,12 @@ This layer is enabled by default.
 
 ## Configuration
 
-The checkers layer has been loaded by default, there are two kinds options for this layer:
-global options and layer option.
+The checkers layer is loaded by default, there are two kinds options for this layer:
+global options and layer options.
 
 **Global options:**
 
-All of the SpaceVim global options should be put into `[options]` section.
+All of the SpaceVim global options should be put into the `[options]` section.
 
 | Name          | default value | description         |
 | ------------- | ------------- | ------------------- |
@@ -43,19 +43,21 @@ All of the SpaceVim global options should be put into `[options]` section.
 
 The default lint engine is `neomake`, you can also use `ale` or `syntastic`.
 
-If you want to config neomake, you can use bootstrap functions. Within bootstrap functions,
+If you want to configure neomake, you can use bootstrap functions. Within bootstrap functions,
 you can use vim script. For all the info about neomake configuration, please checkout `:h neomake`.
 
 **Layer options:**
 
-By default, the error will be display below current line, if you want to disabled this
+By default, the error will be displayed below the current line, if you want to disabled this
 feature, you may need to load this layer with `show_cursor_error` to `false`.
 
-| Name                | default value | description                                              |
-| ------------------- | ------------- | -------------------------------------------------------- |
-| `lint_on_the_fly`   | `false`       | Syntax checking on the fly feature, disabled by default. |
-| `lint_on_save`      | `true`        | Run syntax checking when saving a file.                  |
-| `show_cursor_error` | `true`        | Enable/Disable displaying error below current line.      |
+| Name                    | default value | description                                              |
+| ----------------------- | ------------- | -------------------------------------------------------- |
+| `lint_on_the_fly`       | `false`       | Syntax checking on the fly feature, disabled by default. |
+| `lint_on_save`          | `true`        | Run syntax checking when saving a file.                  |
+| `show_cursor_error`     | `true`        | Enable/Disable displaying error below current line.      |
+| `lint_exclude_filetype` | `[]`          | Set the filetypes which does not enable syntax checking. |
+| `open_error_list`       | `1/2/0`       | Open the language checking windows. Defaults to 2        |
 
 ```toml
 [[layers]]

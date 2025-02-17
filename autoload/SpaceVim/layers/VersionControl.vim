@@ -1,12 +1,29 @@
 "=============================================================================
 " VersionControl.vim --- SpaceVim version control layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 scriptencoding utf-8
+
+""
+" @section VersionControl, layers-VersionControl
+" @parentsection layers
+" This layer provides version control system (VCS) integration for SpaceVim.
+"
+" @subsection Key bindings
+" >
+"   Key binding     Description
+"   SPC t m v       toggle version control info
+"   SPC t m h       toggle hunks summary
+"   SPC g .         version control transient state
+" <
+
+if exists('s:CMP')
+  finish
+endif
 
 let s:CMP = SpaceVim#api#import('vim#compatible')
 
@@ -20,20 +37,25 @@ function! SpaceVim#layers#VersionControl#plugins() abort
   return plugins
 endfunction
 
+function! SpaceVim#layers#VersionControl#health() abort
+  call SpaceVim#layers#VersionControl#plugins()
+  call SpaceVim#layers#VersionControl#config()
+  return 1
+endfunction
+
 function! SpaceVim#layers#VersionControl#config() abort
-  let g:_spacevim_mappings_space.g = get(g:_spacevim_mappings_space, 'g',  {'name' : '+VersionControl/git'})
-  let g:_spacevim_mappings_space.g.v = get(g:_spacevim_mappings_space.g, 'v',  {'name' : '+VersionControl'})
+  let g:_spacevim_mappings_space.g = get(g:_spacevim_mappings_space, 'g',  {'name' : '+VCS/git'})
   call SpaceVim#mapping#space#def('nnoremap', ['g', '.'], 'call call('
         \ . string(s:_function('s:git_transient_state')) . ', [])',
-        \ 'buffer transient state', 1)
+        \ 'vcs-transient-state', 1)
   call SpaceVim#layers#core#statusline#register_sections('vcs', s:_function('s:git_branch'))
   call SpaceVim#layers#core#statusline#register_sections('hunks', s:_function('s:hunks'))
-  call add(g:spacevim_statusline_left_sections, 'vcs')
-  call add(g:spacevim_statusline_left_sections, 'hunks')
+  call add(g:spacevim_statusline_left, 'vcs')
+  call add(g:spacevim_statusline_left, 'hunks')
   call SpaceVim#mapping#space#def('nnoremap', ['t', 'm', 'v'], 'call SpaceVim#layers#core#statusline#toggle_section("vcs")',
-        \ 'version control info', 1)
+        \ 'toggle-vcs-info', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['t', 'm', 'h'], 'call SpaceVim#layers#core#statusline#toggle_section("hunks")',
-        \ 'toggle the hunks summary', 1)
+        \ 'toggle-hunks-summary', 1)
   let g:gtm_plugin_status_enabled = s:enable_gtm_status
   if s:enable_gtm_status
     augroup gtm_plugin
@@ -59,32 +81,24 @@ endfunction
 function! s:git_branch() abort
   if exists('g:loaded_fugitive')
     try
-      let head = fugitive#head()
+      let head = exists("*FugitiveHead") ? FugitiveHead() : fugitive#Head()
       if empty(head)
-        call fugitive#detect(getcwd())
-        let head = fugitive#head()
+        call FugitiveDetect(getcwd())
+        let head = exists("*FugitiveHead") ? FugitiveHead() : fugitive#Head()
       endif
-      if g:spacevim_statusline_unicode_symbols == 1
+      if g:spacevim_statusline_unicode == 1
         return empty(head) ? '' : '  '.head . ' ' . s:gtm_status()
       else
         return empty(head) ? '' : ' '.head . ' ' . s:gtm_status()
       endif
     catch
     endtry
-  elseif exists('g:loaded_git')
-    try
-      let head = '%{git#branch#current()}'
-      if g:spacevim_statusline_unicode_symbols == 1
-        return empty(head) ? '' : '  '.head . ' ' . s:gtm_status()
-      else
-        return empty(head) ? '' : ' '.head . ' ' . s:gtm_status()
-      endif
-    catch
-    endtry
+  else
+      let prefix = g:spacevim_statusline_unicode ? '' : ''
+      return printf('%%{git#branch#current("%s")}', prefix)
   endif
   return ''
 endfunction
-
 
 function! s:gtm_status() abort
   if s:enable_gtm_status
@@ -291,6 +305,16 @@ function! s:change_options(key) abort
       else
         let s:git_log_options[a:key].option = '--author='
       endif
+    elseif a:key ==# 'g'
+      " change search text
+      " change author
+      let origin_grep = matchstr(s:git_log_options[a:key].option, '\("\)\@<=[^"]*')
+      let grep = input('--grep=', origin_grep)
+      if !empty(grep)
+        let s:git_log_options[a:key].option = '--grep=' . grep
+      else
+        let s:git_log_options[a:key].option = '--grep='
+      endif
     elseif a:key ==# 'n'
       let orig_nr = matchstr(s:git_log_options[a:key].option, '\("\)\@<=[^"]*')
       let nr = str2nr(input('-n', orig_nr))
@@ -306,7 +330,7 @@ function! s:change_options(key) abort
     endif
     setlocal modifiable
     let content = s:generate_git_log_popup_content()
-    normal! "_ggdG
+    normal! gg"_dG
     call setline(1, content)
     setlocal nomodifiable
   endif
@@ -332,7 +356,7 @@ function! s:show_repo_log() abort
 endfunction
 
 function! s:get_log_argv() abort
-  let argv = ['git', 'log', '--no-color']
+  let argv = []
   for k in keys(s:git_log_switches)
     if s:git_log_switches[k].enable
       call add(argv, s:git_log_switches[k].option)
@@ -349,19 +373,8 @@ endfunction
 " git log popup action functions {{{
 function! s:Log_current() abort
   close
-  tabnew
-  setlocal norelativenumber
-  let t:_spacevim_tab_name = 'Git log'
-  let argv = join(s:get_log_argv(), ' ')
-  call SpaceVim#logger#info(argv)
-  " in gvim only have term_start function
-  if !has('nvim')
-    call term_start(argv, {'curwin' : 1, 'term_finish' : 'close'})
-  else
-    call termopen(argv)
-  endif
-  nnoremap <buffer><silent> q :bd!<cr>
-  startinsert
+  let argv = s:get_log_argv()
+  call git#log#run(argv)
 endfunction
 " }}}
 
@@ -370,23 +383,23 @@ function! s:show_diff_of_unstaged_hunks() abort
 endfunction
 
 function! s:fetch_repo() abort
-
+  Git fetch
 endfunction
 
 function! s:pull_repo() abort
-
+  Git pull
 endfunction
 
 function! s:push_repo() abort
-
+  Git push
 endfunction
 
 function! s:commit_popup() abort
-
+  Git commit -m update
 endfunction
 
 function! s:commit() abort
-
+  Git commit
 endfunction
 
 function! s:revert_hunk() abort
@@ -501,6 +514,12 @@ function! s:git_transient_state() abort
         \ }
         \ )
   call state.open()
+endfunction
+
+function! SpaceVim#layers#VersionControl#loadable() abort
+
+  return 1
+
 endfunction
 
 " function() wrapper {{{

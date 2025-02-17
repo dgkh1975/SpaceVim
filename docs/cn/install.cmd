@@ -11,7 +11,7 @@ echo "       \______/| ##____/ \_______/\_______/\_______/   \_/   |__|__/ |__/ 
 echo "               | ##                                                           "
 echo "               | ##                                                           "
 echo "               |__/                                                           "
-echo "                    版本: 1.7.0-dev    中文官网: https://spacevim.org/cn/     "
+echo "                    版本: 2.5.0-dev    中文官网: https://spacevim.org/cn/     "
 
 Push-Location ~
 
@@ -82,7 +82,7 @@ echo ""
 
 if (!(Test-Path "$HOME\.SpaceVim")) {
   echo "==> 正在安装 $app_name"
-  git clone $repo_url $repo_path
+  git clone --depth 1  $repo_url $repo_path
 } else {
   echo "==> 正在更新 $app_name"
   Push-Location $repo_path
@@ -91,7 +91,7 @@ if (!(Test-Path "$HOME\.SpaceVim")) {
 
 echo ""
 if (!(Test-Path "$HOME\vimfiles")) {
-  cmd /c mklink $HOME\vimfiles $repo_path
+  cmd /c mklink /J $HOME\vimfiles $repo_path
   echo "[OK] 已为 vim 安装 SpaceVim"
   sleep 1
 } else {
@@ -101,7 +101,7 @@ if (!(Test-Path "$HOME\vimfiles")) {
 
 echo ""
 if (!(Test-Path "$HOME\AppData\Local\nvim")) {
-  cmd /c mklink "$HOME\AppData\Local\nvim" $repo_path
+  cmd /c mklink /J "$HOME\AppData\Local\nvim" $repo_path
   echo "[OK] 已为 neovim 安装 SpaceVim"
   sleep 1
 } else {
@@ -119,5 +119,3 @@ echo "感谢支持 SpaceVim，欢迎反馈！"
 echo ""
 
 Pause
-
-# vim:set ft=powershell nowrap: 

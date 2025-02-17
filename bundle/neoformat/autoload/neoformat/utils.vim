@@ -1,7 +1,21 @@
+"=============================================================================
+" utils.vim --- utils function for neoformat
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
+" URL: https://spacevim.org
+" License: GPLv3
+"=============================================================================
+
+
+let s:LOGGER = SpaceVim#logger#derive('neoformat')
+let s:NT = SpaceVim#api#import('notify')
+let s:formatopt = SpaceVim#layers#format#get_format_option()
+let s:NT.notify_max_width = s:formatopt.format_notify_width
+let s:NT.timeout = s:formatopt.format_notify_timeout
+
+
 function! neoformat#utils#log(msg) abort
-    if neoformat#utils#should_be_verbose()
-        return s:better_echo(a:msg)
-    endif
+    call s:LOGGER.info(a:msg)
 endfunction
 
 function! neoformat#utils#log_file_content(path) abort
@@ -11,7 +25,7 @@ function! neoformat#utils#log_file_content(path) abort
 endfunction
 
 function! neoformat#utils#warn(msg) abort
-    echohl WarningMsg | call s:better_echo(a:msg) | echohl NONE
+    call s:LOGGER.warn(a:msg)
 endfunction
 
 function! neoformat#utils#msg(msg) abort
@@ -30,9 +44,11 @@ endfunction
 
 function! s:better_echo(msg) abort
     if type(a:msg) != type('')
-        echom 'Neoformat: ' . string(a:msg)
+        call s:LOGGER.debug('Neoformat: ' . string(a:msg))
+        call s:NT.notify('Neoformat: ' . string(a:msg))
     else
-        echom 'Neoformat: ' . a:msg
+        call s:LOGGER.debug('Neoformat: ' . a:msg)
+        call s:NT.notify('Neoformat: ' . a:msg)
     endif
 endfunction
 

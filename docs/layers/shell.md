@@ -1,6 +1,6 @@
 ---
 title: "SpaceVim shell layer"
-description: "This layer provide shell support in SpaceVim"
+description: "This layer provides shell support in SpaceVim"
 ---
 
 # [Available Layers](../) >> shell
@@ -34,7 +34,7 @@ To use this configuration layer, add following snippet to your custom configurat
 
 ### Default shell
 
-Vim support these kinds of shell:
+Vim supports these kinds of shells:
 
 To define the default shell you can set the layer variable `default_shell` to the following variables:
 
@@ -46,7 +46,7 @@ The default shell is quickly accessible via a the default shortcut key `SPC '`.
 ### Default shell position and height
 
 It is possible to choose where the shell should pop up by setting the
-variable `default_position` to either `top`, `bottom`, `left`, `right`, `float`
+variable `default_position` to either `top`, `bottom`, `left`, `right`, `float`, `center-float`
 or `full`. Default value is `top`. It is also possible to set the default height
 in percents with the variable `default_height`. Default value is 30.
 
@@ -59,16 +59,17 @@ in percents with the variable `default_height`. Default value is 30.
 
 ## Key bindings
 
-| Key Binding  | Description                              |
-| ------------ | ---------------------------------------- |
-| `SPC '`      | Open or switch to the terminal windows   |
-| `Ctrl-d`     | Close terminal windows in terminal mode  |
-| `q`          | Hide terminal windows in Normal mode     |
-| `<Esc>`      | Switch to Normal mode from terminal mode |
-| `Ctrl-Left`  | Switch to the windows on the left        |
-| `Ctrl-Down`  | Switch to the windows below              |
-| `Ctrl-Up`    | Switch to the windows on the top         |
-| `Ctrl-Right` | Switch to the windows on the right       |
+| Key Binding     | Description                              |
+| --------------- | ---------------------------------------- |
+| `SPC '`         | Open or switch to the terminal windows   |
+| `Ctrl-d`        | Close terminal windows in terminal mode  |
+| `q`             | Hide terminal windows in Normal mode     |
+| `` Ctrl-` ``    | Hide terminal windows in terminal mode   |
+| `Ctrl-\-Ctrl-n` | Switch to Normal mode from terminal mode |
+| `Ctrl-Left`     | Switch to the windows on the left        |
+| `Ctrl-Down`     | Switch to the windows below              |
+| `Ctrl-Up`       | Switch to the windows on the top         |
+| `Ctrl-Right`    | Switch to the windows on the right       |
 
 ### Additional key bindings on Windows
 

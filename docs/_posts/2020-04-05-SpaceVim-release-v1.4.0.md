@@ -3,7 +3,7 @@ title: SpaceVim release v1.4.0
 categories: [changelog, blog]
 description: "SpaceVim released V1.4.0 with eight new language layers and an asynchronous task management plugin"
 type: article
-image: https://user-images.githubusercontent.com/13142418/80494420-3925c680-8999-11ea-9652-21e1e5564148.png
+image: https://img.spacevim.org/80494420-3925c680-8999-11ea-9652-21e1e5564148.png
 commentsID: "SpaceVim release v1.4.0"
 comments: true
 ---
@@ -25,7 +25,7 @@ comments: true
 The last release is v1.3.0, After four months development.
 The v1.4.0 has been released. So let's take a look at what happened since last relase.
 
-![v1.4.0](https://user-images.githubusercontent.com/13142418/80494420-3925c680-8999-11ea-9652-21e1e5564148.png)
+![v1.4.0](https://img.spacevim.org/80494420-3925c680-8999-11ea-9652-21e1e5564148.png)
 
 - [Quick start guide](../quick-start-guide/): installation, configuration, and resources of learning SpaceVim
 - [documentation](../documentation/): the primary official document of SpaceVim
@@ -41,7 +41,7 @@ Eight programming language layers have been added since the last release:
 - Add [`lang#zig`](../layers/lang/zig/) layer [#3355](https://github.com/SpaceVim/SpaceVim/pull/3355)
 - Add `lang#wdl` layer [#3307](https://github.com/SpaceVim/SpaceVim/pull/3307)
 - Add [`lang#ring`](../layers/lang/ring/) layer [#3311](https://github.com/SpaceVim/SpaceVim/pull/3311)
-- Add [`lang#asepctj`](../layers/lang/asepctj/) layer [#3313](https://github.com/SpaceVim/SpaceVim/pull/3313)
+- Add [`lang#aspectj`](../layers/lang/aspectj/) layer [#3313](https://github.com/SpaceVim/SpaceVim/pull/3313)
 - Add [`lang#lasso`](../layers/lang/lasso/) layer [#3314](https://github.com/SpaceVim/SpaceVim/pull/3314)
 - Add `lang#xquery` layer [#3327](https://github.com/SpaceVim/SpaceVim/pull/3327)
 - Add [`lang#janet`](../layers/lang/janet/) layer [#3330](https://github.com/SpaceVim/SpaceVim/pull/3330)

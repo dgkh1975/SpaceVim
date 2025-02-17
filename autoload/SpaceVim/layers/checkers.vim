@@ -1,15 +1,30 @@
 "=============================================================================
 " checkers.vim --- SpaceVim checkers layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section checkers, layer-checkers
+" @section checkers, layers-checkers
 " @parentsection layers
-" SpaceVim uses neomake as default syntax checker.
+" The `checkers` layer provides syntax lint feature. The default lint engine
+" is |neomake|, this can be changed by `lint_engine` option:
+" >
+"   [options]
+"     lint_engine = 'ale'
+" <
+"
+" @subsection options
+"
+" - `lint_on_the_fly`: Syntax checking on the fly feature, disabled by default.
+" - `lint_on_save`: Run syntax checking when saving a file.
+" - `show_cursor_error`: Enable/Disable displaying error below current line.
+" - `lint_exclude_filetype`: Set the filetypes which does not enable syntax
+"   checking.
+" - `open_error_list`: Open the language checking windows. when set to 0, the
+"   windows will not be opened automatically. Defaults to 2.
 
 
 if exists('s:show_cursor_error')
@@ -22,6 +37,11 @@ else
   let s:show_cursor_error = 0
 endif
 
+let s:lint_exclude_filetype = []
+let s:lint_on_the_fly = 0
+let s:lint_on_save = 1
+let s:open_error_list = 0
+
 let s:SIG = SpaceVim#api#import('vim#signatures')
 let s:STRING = SpaceVim#api#import('data#string')
 
@@ -29,12 +49,17 @@ function! SpaceVim#layers#checkers#plugins() abort
   let plugins = []
 
   if exists('g:spacevim_enable_neomake') || exists('g:spacevim_enable_ale')
-    call SpaceVim#logger#warn('enable_neomake and enable_ale is duplecated', 0)
-    call SpaceVim#logger#warn('please read :h spacevim-options-lint_engine for more info!', 0)
+    call SpaceVim#logger#warn('enable_neomake and enable_ale is duplecated')
+    call SpaceVim#logger#warn('please read :h spacevim-options-lint_engine for more info!')
   endif
 
   if g:spacevim_lint_engine ==# 'neomake'
-    call add(plugins, [g:_spacevim_root_dir . 'bundle/neomake', {'merged' : 0, 'loadconf' : 1 , 'loadconf_before' : 1}])
+    call add(plugins, [g:_spacevim_root_dir . 'bundle/neomake', {
+          \ 'merged' : 0,
+          \ 'loadconf' : 1,
+          \ 'on_cmd' : ['Neomake'],
+          \ 'on_func' : ['neomake#GetCurrentErrorMsg', 'neomake#statusline#LoclistCounts'],
+          \ 'loadconf_before' : 1}])
   elseif g:spacevim_lint_engine ==# 'ale'
     call add(plugins, [g:_spacevim_root_dir . 'bundle/ale', {'merged' : 0, 'loadconf' : 1 , 'loadconf_before' : 1}])
   elseif g:spacevim_lint_engine ==# 'syntastic'
@@ -44,20 +69,40 @@ function! SpaceVim#layers#checkers#plugins() abort
   return plugins
 endfunction
 
+function! SpaceVim#layers#checkers#loadable() abort
+
+  return 1
+
+endfunction
+
 function! SpaceVim#layers#checkers#set_variable(var) abort
 
   let s:show_cursor_error = get(a:var, 'show_cursor_error', 1)
-  let s:lint_on_the_fly =  get(a:var, 'lint_on_the_fly', 1)
+  let s:lint_on_the_fly =  get(a:var, 'lint_on_the_fly', 0)
+  let s:lint_on_save = get(a:var, 'lint_on_save', 1)
+  let s:lint_exclude_filetype =  get(a:var, 'lint_exclude_filetype', [])
 
   if s:show_cursor_error && !has('timers')
     call SpaceVim#logger#warn('show_cursor_error in checkers layer needs timers feature')
     let s:show_cursor_error = 0
   endif
+
+
+  let s:open_error_list = get(a:var, 'open_error_list', s:open_error_list)
 endfunction
 
 function! SpaceVim#layers#checkers#get_options() abort
 
   return ['show_cursor_error']
+
+endfunction
+
+function! SpaceVim#layers#checkers#get_lint_option() abort
+
+  return {
+        \ 'lint_on_the_fly' : s:lint_on_the_fly,
+        \ 'lint_on_save' : s:lint_on_save,
+        \ }
 
 endfunction
 
@@ -68,6 +113,14 @@ function! SpaceVim#layers#checkers#config() abort
     let g:neomake_echo_current_error = get(g:, 'neomake_echo_current_error', !s:show_cursor_error)
     let g:neomake_cursormoved_delay = get(g:, 'neomake_cursormoved_delay', 300)
     let g:neomake_virtualtext_current_error = get(g:, 'neomake_virtualtext_current_error', !s:show_cursor_error)
+
+    " exclude filetypes:
+    for ft in s:lint_exclude_filetype
+      let g:neomake_{ft}_enabled_makers = []
+    endfor
+
+    let g:neomake_open_list = s:open_error_list
+
 
   elseif g:spacevim_lint_engine ==# 'ale'
     let g:ale_echo_delay = get(g:, 'ale_echo_delay', 300)
@@ -103,10 +156,10 @@ function! SpaceVim#layers#checkers#config() abort
         \ 'toggle-syntax-checker', 1)
   call SpaceVim#layers#core#statusline#register_mode(
         \ {
-        \ 'key' : 'syntax-checking',
-        \ 'func' : string(s:_function('s:toggle_syntax_checker')),
-        \ }
-        \ )
+          \ 'key' : 'syntax-checking',
+          \ 'func' : s:_function('s:toggle_syntax_checker'),
+          \ }
+          \ )
   call SpaceVim#mapping#space#def('nnoremap', ['e', 'e'], 'call call('
         \ . string(s:_function('s:explain_the_error')) . ', [])',
         \ 'explain-the-error', 1)
@@ -133,11 +186,23 @@ function! SpaceVim#layers#checkers#config() abort
         endif
       endif
     elseif g:spacevim_lint_engine ==# 'ale' && SpaceVim#layers#isLoaded('core#statusline')
-      autocmd User ALELint 
+      autocmd User ALELintPost
             \ let &l:statusline = SpaceVim#layers#core#statusline#get(1)
     endif
   augroup END
 endfunction
+
+
+function! SpaceVim#layers#checkers#health() abort
+
+  call SpaceVim#layers#checkers#plugins()
+  call SpaceVim#layers#checkers#set_variable({})
+  call SpaceVim#layers#checkers#get_options()
+  call SpaceVim#layers#checkers#config()
+  return 1
+
+endfunction
+
 
 function! s:neomake_cursor_move_delay() abort
   call s:neomake_signatures_clear()
@@ -146,70 +211,88 @@ function! s:neomake_cursor_move_delay() abort
 endfunction
 
 function! s:toggle_show_error(...) abort
-  let llist = getloclist(0, {'size' : 1, 'winid' : 1})
-  let qlist = getqflist({'size' : 1, 'winid' : 1})
-  if llist.size == 0 && qlist.size == 0
-    echohl WarningMsg
-    echon 'There is no errors!'
-    echohl None
-    return
-  endif
-  if llist.winid > 0
-    lclose
-  elseif qlist.winid > 0
-    cclose
-  elseif llist.size > 0
-    botright lopen
-  elseif qlist.size > 0
-    botright copen
-  endif
-  if a:1 == 1
-    wincmd w
+  if SpaceVim#lsp#buf_server_ready()
+    call SpaceVim#lsp#diagnostic_set_loclist()
+  else
+    " if buf_server_ready return false, the language server loclist
+    " should be cleared.
+    if get(getloclist(0, {'title': 0}), 'title', '') ==# 'Language Server'
+          \ || get(getloclist(0, {'title': 0}), 'title', '') ==# 'Diagnostics'
+      call setloclist(0, [], 'r')
+    endif
+    let llist = getloclist(0, {'size' : 1, 'winid' : 1})
+    let qlist = getqflist({'size' : 1, 'winid' : 1})
+    if llist.size == 0 && qlist.size == 0
+      echohl WarningMsg
+      echon 'There is no errors!'
+      echohl None
+      return
+    endif
+    if llist.winid > 0
+      lclose
+    elseif qlist.winid > 0
+      cclose
+    elseif llist.size > 0
+      botright lopen
+    elseif qlist.size > 0
+      botright copen
+    endif
+    if a:1 == 1
+      wincmd w
+    endif
   endif
 endfunction
 
 function! s:jump_to_next_error() abort
-  try
-    lnext
-  catch
+  if SpaceVim#lsp#buf_server_ready()
+    call SpaceVim#lsp#diagnostic_goto_next()
+  else
     try
-      ll
+      lnext
     catch
       try
-        cnext
+        ll
       catch
         try
-          cc
+          cnext
         catch
-          echohl WarningMsg
-          echon 'There is no errors!'
-          echohl None
+          try
+            cc
+          catch
+            echohl WarningMsg
+            echon 'There is no errors!'
+            echohl None
+          endtry
         endtry
       endtry
     endtry
-  endtry
+  endif
 endfunction
 
 function! s:jump_to_previous_error() abort
-  try
-    lprevious
-  catch
+  if SpaceVim#lsp#buf_server_ready()
+    call SpaceVim#lsp#diagnostic_goto_prev()
+  else
     try
-      ll
+      lprevious
     catch
       try
-        cprevious
+        ll
       catch
         try
-          cc
+          cprevious
         catch
-          echohl WarningMsg
-          echon 'There is no errors!'
-          echohl None
+          try
+            cc
+          catch
+            echohl WarningMsg
+            echon 'There is no errors!'
+            echohl None
+          endtry
         endtry
       endtry
     endtry
-  endtry
+  endif
 endfunction
 
 let s:last_echoed_error = ''
@@ -255,12 +338,12 @@ endfunction
 
 function! s:toggle_syntax_checker() abort
   call SpaceVim#layers#core#statusline#toggle_section('syntax checking')
-  call SpaceVim#layers#core#statusline#toggle_mode('syntax-checking')
   if g:spacevim_lint_engine ==# 'neomake'
     verbose NeomakeToggle
   elseif g:spacevim_lint_engine ==# 'ale'
     ALEToggle
   endif
+  return 1
 endfunction
 
 
@@ -304,34 +387,34 @@ function! s:error_transient_state() abort
   call state.set_title('Error Transient State')
   call state.defind_keys(
         \ {
-        \ 'layout' : 'vertical split',
-        \ 'left' : [
-        \ {
-        \ 'key' : 'n',
-        \ 'desc' : 'next error',
-        \ 'func' : '',
-        \ 'cmd' : 'try | lnext | catch | endtry',
-        \ 'exit' : 0,
-        \ },
-        \ ],
-        \ 'right' : [
-        \ {
-        \ 'key' : ['p', 'N'],
-        \ 'desc' : 'previous error',
-        \ 'func' : '',
-        \ 'cmd' : 'try | lprevious | catch | endtry',
-        \ 'exit' : 0,
-        \ },
-        \ {
-        \ 'key' : 'q',
-        \ 'desc' : 'quit',
-        \ 'func' : '',
-        \ 'cmd' : '',
-        \ 'exit' : 1,
-        \ },
-        \ ],
-        \ }
-        \ )
+          \ 'layout' : 'vertical split',
+          \ 'left' : [
+            \ {
+              \ 'key' : 'n',
+              \ 'desc' : 'next error',
+              \ 'func' : '',
+              \ 'cmd' : 'try | lnext | catch | endtry',
+              \ 'exit' : 0,
+              \ },
+              \ ],
+              \ 'right' : [
+                \ {
+                  \ 'key' : ['p', 'N'],
+                  \ 'desc' : 'previous error',
+                  \ 'func' : '',
+                  \ 'cmd' : 'try | lprevious | catch | endtry',
+                  \ 'exit' : 0,
+                  \ },
+                  \ {
+                    \ 'key' : 'q',
+                    \ 'desc' : 'quit',
+                    \ 'func' : '',
+                    \ 'cmd' : '',
+                    \ 'exit' : 1,
+                    \ },
+                    \ ],
+                    \ }
+                    \ )
   call state.open()
 endfunction
 
@@ -352,5 +435,12 @@ endif
 
 " TODO clear errors
 function! s:clear_errors() abort
-  sign unplace *
+  if SpaceVim#lsp#buf_server_ready()
+    call SpaceVim#lsp#diagnostic_clear()
+    if get(getloclist(0, {'title': 0}), 'title', '') ==# 'Language Server'
+      call setloclist(0, [], 'r')
+    endif
+  else
+    sign unplace *
+  endif
 endfunction

@@ -1,24 +1,107 @@
 "=============================================================================
 " edit.vim --- SpaceVim edit layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
+""
+" @section edit, layers-edit
+" @parentsection layers
+" The `edit` layer provides basic feature for editing files.
+" This layer is loaded by default. To disable this layer:
+" >
+"   [[layers]]
+"     name = 'edit'
+"     enable = false
+" <
+" @subsection Configuration
+" 1. `autosave_timeout`: set the timeoutlen of autosave plugin. By default it
+" is 0. And autosave is disabled. timeoutlen must be given in millisecods and
+" can't be > 100*60*1000 (100 minutes) or < 1000 (1 second). For example,
+" setup timer with 5 minutes:
+" >
+"   [[layers]]
+"     name = 'edit'
+"     autosave_timeout = 300000
+" <
+" 2. `autosave_events`: set the events on which autosave will perform a save.
+" This option is an empty list by default. you can trigger saving based
+" on vim's events, for example:
+" >
+"   [[layers]]
+"     name = 'edit'
+"     autosave_events = ['InsertLeave', 'TextChanged']
+" <
+" 3. `autosave_all_buffers`: By default autosave plugin only save current buffer.
+" If you want to save all buffers automatically. Set this option to `true`.
+" >
+"   [[layers]]
+"     name = 'edit'
+"     autosave_all_buffers = true
+" <
+" 4. `autosave_location`: set the directory where to save changed files. By
+" default it is empty string, that means saving to the original file. If this
+" option is not an empty string. files will me saved to that directory
+" automatically. and the format is:
+" >
+"   autosave_location/path+=to+=filename.ext.backup
+" <
+" 5. `enable_hop`: by default, spacevim use easymotion plugin. and if you are
+" using neovim 0.6.0 or above, hop.nvim will be enabled. You can disabled this
+" plugin and still using easymotion.
+"
+" @subsection key bindings
+"
+" The `edit` layer also provides many key bindings:
+" >
+"   key binding       description
+"   SPC x c           count in the selection region
+" <
+"
+" The following key binding is to jump to targets. The default plugin is
+" `easymotion`, and if you are using neovim 0.6.0 or above. The `hop.nvim` will
+" be used.
+" >
+"   key binding       description
+"   SPC j j           jump or select a character
+"   SPC j J           jump to suite of two characters
+"   SPC j l           jump or select to a line
+"   SPC j w           jump to a word
+"   SPC j u           jump to a url
+" <
 
 scriptencoding utf-8
+if exists('s:autosave_timeout')
+  finish
+endif
+
 let s:PASSWORD = SpaceVim#api#import('password')
 let s:NUMBER = SpaceVim#api#import('data#number')
 let s:LIST = SpaceVim#api#import('data#list')
 let s:VIM = SpaceVim#api#import('vim')
 let s:CMP = SpaceVim#api#import('vim#compatible')
+let s:BUFFER = SpaceVim#api#import('vim#buffer')
+let s:HI = SpaceVim#api#import('vim#highlight')
+
+let s:autosave_timeout = 0
+let s:autosave_events = []
+let s:autosave_all_buffers = 0
+let s:autosave_location = ''
+let s:enable_hop = 1
+
+function! SpaceVim#layers#edit#health() abort
+  call SpaceVim#layers#edit#plugins()
+  call SpaceVim#layers#edit#config()
+  return 1
+endfunction
 
 function! SpaceVim#layers#edit#plugins() abort
   let plugins = [
-        \ [g:_spacevim_root_dir . 'bundle/vim-surround'],
         \ [g:_spacevim_root_dir . 'bundle/vim-repeat'],
-        \ [g:_spacevim_root_dir . 'bundle/vim-emoji'],
+        \ [g:_spacevim_root_dir . 'bundle/vim-emoji', {'on_event' : 'BufReadPost'}],
+        \ [g:_spacevim_root_dir . 'bundle/vim-grammarous', {'merged' : 0, 'on_cmd' : ['GrammarousCheck', 'GrammarousReset']}],
         \ [g:_spacevim_root_dir . 'bundle/vim-expand-region', { 'loadconf' : 1}],
         \ [g:_spacevim_root_dir . 'bundle/vim-textobj-user'],
         \ [g:_spacevim_root_dir . 'bundle/vim-textobj-indent'],
@@ -26,21 +109,29 @@ function! SpaceVim#layers#edit#plugins() abort
         \ [g:_spacevim_root_dir . 'bundle/vim-table-mode'],
         \ [g:_spacevim_root_dir . 'bundle/vim-textobj-entire'],
         \ [g:_spacevim_root_dir . 'bundle/wildfire.vim',{'on_map' : '<Plug>(wildfire-'}],
-        \ [g:_spacevim_root_dir . 'bundle/vim-easymotion'],
-        \ [g:_spacevim_root_dir . 'bundle/vim-easyoperator-line'],
         \ [g:_spacevim_root_dir . 'bundle/editorconfig-vim', { 'merged' : 0, 'if' : has('python') || has('python3')}],
-        \ [g:_spacevim_root_dir . 'bundle/vim-jplus', { 'on_map' : '<Plug>(jplus' }],
-        \ [g:_spacevim_root_dir . 'bundle/tabular',           { 'merged' : 0}],
-        \ [g:_spacevim_root_dir . 'bundle/vim-better-whitespace',  { 'on_cmd' : ['StripWhitespace', 'ToggleWhitespace', 'DisableWhitespace', 'EnableWhitespace']}],
-        \ ['andrewradev/splitjoin.vim',{ 'merged' : 0, 'loadconf' : 1}],
+        \ [g:_spacevim_root_dir . 'bundle/vim-jplus', { 'on_map' : '<Plug>(jplus', 'loadconf_before' : 1 }],
+        \ [g:_spacevim_root_dir . 'bundle/tabular',           { 'merged' : 0, 'on_cmd' : ['Tabularize']}],
+        \ [g:_spacevim_root_dir . 'bundle/splitjoin.vim',{ 'on_cmd':['SplitjoinJoin', 'SplitjoinSplit'],'merged' : 0, 'loadconf' : 1}],
         \ ]
+  if has('nvim-0.8.0')
+    call add(plugins,[g:_spacevim_root_dir . 'bundle/nvim-surround',        { 'merged' : 0, 'loadconf' : 1, 'on_event' : ['BufReadPost']}])
+  else
+    call add(plugins,[g:_spacevim_root_dir . 'bundle/vim-surround',        { 'merged' : 0, 'loadconf' : 1}])
+  endif
+  if has('nvim-0.6.0') && s:enable_hop
+    call add(plugins,[g:_spacevim_root_dir . 'bundle/hop.nvim',        { 'merged' : 0, 'loadconf' : 1, 'on_cmd' : ['HopChar1', 'HopChar2', 'HopWord', 'HopLine']}])
+  else
+    call add(plugins,[g:_spacevim_root_dir . 'bundle/vim-easymotion',        { 'merged' : 0}])
+    call add(plugins,[g:_spacevim_root_dir . 'bundle/vim-easyoperator-line',        { 'merged' : 0}])
+  endif
   if executable('fcitx')
     call add(plugins,[g:_spacevim_root_dir . 'bundle/fcitx.vim',        { 'on_event' : 'InsertEnter'}])
   endif
   if g:spacevim_enable_bepo_layout
     call add(plugins,[g:_spacevim_root_dir . 'bundle/vim-bepo',        { 'merged' : 0}])
   endif
-  if s:CMP.has('python') || s:CMP.has('python3')
+  if s:CMP.has('python3') || s:CMP.has('python')
     call add(plugins,[g:_spacevim_root_dir . 'bundle/vim-mundo',        { 'on_cmd' : 'MundoToggle'}])
   else
     call add(plugins,[g:_spacevim_root_dir . 'bundle/undotree',        { 'on_cmd' : 'UndotreeToggle'}])
@@ -48,7 +139,33 @@ function! SpaceVim#layers#edit#plugins() abort
   return plugins
 endfunction
 
+function! SpaceVim#layers#edit#set_variable(var) abort
+  let s:autosave_timeout = get(a:var, 'autosave_timeout', s:autosave_timeout)
+  let s:autosave_events = get(a:var, 'autosave_events', s:autosave_events)
+  let s:autosave_all_buffers = get(a:var, 'autosave_all_buffers', s:autosave_all_buffers)
+  let s:autosave_location = get(a:var, 'autosave_location', s:autosave_location)
+  let s:enable_hop = get(a:var, 'enable_hop', s:enable_hop)
+endfunction
+
+function! SpaceVim#layers#edit#get_options() abort
+  return ['autosave_all_buffers', 'autosave_timeout', 'autosave_events']
+endfunction
 function! SpaceVim#layers#edit#config() abort
+  " autosave plugins options
+  let autosave_opt = {
+        \ 'timeoutlen' : s:autosave_timeout,
+        \ 'save_all_buffers' : s:autosave_all_buffers,
+        \ 'backupdir' : s:autosave_location,
+        \ 'event' : s:autosave_events,
+        \ }
+
+  if has('nvim-0.7.0')
+    lua require('spacevim.plugin.autosave').config(vim.api.nvim_eval('autosave_opt'))
+  else
+    call SpaceVim#plugins#autosave#config(autosave_opt)
+  endif
+
+
   let g:multi_cursor_next_key=get(g:, 'multi_cursor_next_key', '<C-n>')
   let g:multi_cursor_prev_key=get(g:, 'multi_cursor_prev_key', '<C-m>')
   let g:multi_cursor_skip_key=get(g:, 'multi_cursor_skip_key', '<C-x>')
@@ -68,13 +185,7 @@ function! SpaceVim#layers#edit#config() abort
   vnoremap <C-SPACE> <Plug>(wildfire-water)
   let g:wildfire_objects = ["i'", 'i"', 'i)', 'i]', 'i}', 'ip', 'it']
 
-  " osyo-manga/vim-jplus {{{
-  nmap <silent> J <Plug>(jplus)
-  vmap <silent> J <Plug>(jplus)
-  " }}}
-
-
-  if s:CMP.has('python') || s:CMP.has('python3')
+  if s:CMP.has('python3') || s:CMP.has('python')
     nnoremap <silent> <F7> :MundoToggle<CR>
   else
     nnoremap <silent> <F7> :UndotreeToggle<CR>
@@ -102,17 +213,17 @@ function! SpaceVim#layers#edit#config() abort
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', '='], 'Tabularize /===\|<=>\|\(&&\|||\|<<\|>>\|\/\/\)=\|=\~[#?]\?\|=>\|[:+/*!%^=><&|.?-]\?=[#?]\?/l1r1', 'align-region-at-=', 1, 1)
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', 'o'], 'Tabularize /&&\|||\|\.\.\|\*\*\|<<\|>>\|\/\/\|[-+*/.%^><&|?]/l1r1', 'align-region-at-operator, such as +,-,*,/,%,^,etc', 1, 1)
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', '¦'], 'Tabularize /¦', 'align-region-at-¦', 1, 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', '<Bar>'], 'Tabularize /|', 'align-region-at-|', 1, 1)
+  call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', '<Bar>'], 'Tabularize /[|｜]', 'align-region-at-|', 1, 1)
   call SpaceVim#mapping#space#def('nmap', ['x', 'a', '[SPC]'], 'Tabularize /\s\ze\S/l0', 'align-region-at-space', 1, 1)
-  " @fixme SPC x a SPC make vim flick
   nmap <Space>xa<Space> [SPC]xa[SPC]
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'a', 'r'], 'call call('
         \ . string(s:_function('s:align_at_regular_expression')) . ', [])',
         \ 'align-region-at-user-specified-regexp', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'd', 'w'], 'StripWhitespace', 'delete trailing whitespaces', 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['x', 'd', '<Space>'], 'silent call call('
+  call SpaceVim#mapping#space#def('nnoremap', ['x', 'd', '[SPC]'], 'silent call call('
         \ . string(s:_function('s:delete_extra_space')) . ', [])',
         \ 'delete extra space arround cursor', 1)
+  nmap <Space>xd<Space> [SPC]xd[SPC]
   call SpaceVim#mapping#space#def('nnoremap', ['x', 'i', 'c'], 'silent call call('
         \ . string(s:_function('s:lowerCamelCase')) . ', [])',
         \ 'change symbol style to lowerCamelCase', 1)
@@ -147,21 +258,63 @@ function! SpaceVim#layers#edit#config() abort
         \ . string(s:_function('s:set_justification_to')) . ', ["right"])',
         \ 'set-the-justification-to-right', 1)
 
-  call SpaceVim#mapping#space#def('vnoremap', ['x', 'u'], 'gu', 'set the selected text to lower case', 0)
-  call SpaceVim#mapping#space#def('vnoremap', ['x', 'U'], 'gU', 'set the selected text to up case', 0)
+  nnoremap <silent> <Plug>Lowercase  :call <SID>toggle_case(0, -1)<Cr>
+  vnoremap <silent> <Plug>Lowercase  :call <SID>toggle_case(1, -1)<Cr>
+  nnoremap <silent> <Plug>Uppercase  :call <SID>toggle_case(0, 1)<Cr>
+  vnoremap <silent> <Plug>Uppercase  :call <SID>toggle_case(1, 1)<Cr>
+  nnoremap <silent> <Plug>ToggleCase :call <SID>toggle_case(0, 0)<Cr>
+  vnoremap <silent> <Plug>ToggleCase :call <SID>toggle_case(1, 0)<Cr>
+  call SpaceVim#mapping#space#def('nmap' , ['x' , 'u'] , '<Plug>Lowercase'  , 'lowercase-text'   , 0, 1)
+  call SpaceVim#mapping#space#def('nmap' , ['x' , 'U'] , '<Plug>Uppercase'  , 'uppercase-text'   , 0, 1)
+  call SpaceVim#mapping#space#def('nmap' , ['x' , '~'] , '<Plug>ToggleCase' , 'toggle-case-text' , 0, 1)
+
+  " 定义 SpaceVim 键映射
+  call SpaceVim#mapping#space#def('nmap', ['x', 'H'], '<Plug>ConvertToFullWidth', 'convert to fullWidth', 0, 1)
+  call SpaceVim#mapping#space#def('nmap', ['x', 'h'], '<Plug>ConvertToHalfWidth', 'convert to halfWidth', 0, 1)
+  call SpaceVim#mapping#space#def('nmap', ['x', 'W'], '<Plug>ToggleFullHalfWidth', 'toggle fullWidth and halfWidth', 0, 1)
 
   " word
   let g:_spacevim_mappings_space.x.w = {'name' : '+Word'}
   call SpaceVim#mapping#space#def('vnoremap', ['x', 'w', 'c'], 'normal! ' . ":'<,'>s/\\\w\\+//gn" . "\<cr>", 'count the words in the select region', 1)
-  let g:_spacevim_mappings_space.x.s = {'name' : '+String'}
+  let g:_spacevim_mappings_space.x.s = {'name' : '+String/Snippet'}
   call SpaceVim#mapping#space#def('nnoremap', ['x', 's', 'j'], 'call call('
         \ . string(s:_function('s:join_string_with')) . ', [])',
         \ 'join-string-with', 1)
 
-  let g:_spacevim_mappings_space.i = {'name' : '+Insertion'}
-  let g:_spacevim_mappings_space.i.l = {'name' : '+Lorem-ipsum'}
-  let g:_spacevim_mappings_space.i.p = {'name' : '+Passwords'}
-  let g:_spacevim_mappings_space.i.U = {'name' : '+UUID'}
+  " line
+  let g:_spacevim_mappings_space.x.l = {'name' : '+Line'}
+  nnoremap <silent> <Plug>DuplicateLines :call <SID>duplicate_lines(0)<Cr>
+  vnoremap <silent> <Plug>DuplicateLines :call <SID>duplicate_lines(1)<Cr>
+  call SpaceVim#mapping#space#def('nmap', ['x', 'l', 'd'], '<Plug>DuplicateLines',
+        \ 'duplicate-line-or-region', 0, 1)
+  nnoremap <silent> <Plug>ReverseLines :ReverseLines<cr>
+  vnoremap <silent> <Plug>ReverseLines :ReverseLines<cr>
+  call SpaceVim#mapping#space#def('nmap' , ['x' , 'l' , 'r'] , '<Plug>ReverseLines'  , 'reverse-lines'                  , 0, 1)
+  call SpaceVim#mapping#space#def('nnoremap' , ['x' , 'l' , 's'] , 'sort i'  , 'sort lines (ignorecase)'                    , 1)
+  call SpaceVim#mapping#space#def('nnoremap' , ['x' , 'l' , 'S'] , 'sort'    , 'sort lines (case-sensitive)'                , 1)
+  nnoremap <silent> <Plug>UniquifyIgnoreCaseLines :call <SID>uniquify_lines(0, 1)<Cr>
+  vnoremap <silent> <Plug>UniquifyIgnoreCaseLines :call <SID>uniquify_lines(1, 1)<Cr>
+  nnoremap <silent> <Plug>UniquifyCaseSenstiveLines :call <SID>uniquify_lines(0, 0)<Cr>
+  vnoremap <silent> <Plug>UniquifyCaseSenstiveLines :call <SID>uniquify_lines(1, 0)<Cr>
+  call SpaceVim#mapping#space#def('nmap', ['x', 'l', 'u'], '<Plug>UniquifyIgnoreCaseLines',
+        \ 'uniquify-lines (ignorecase)', 0, 1)
+  call SpaceVim#mapping#space#def('nmap', ['x', 'l', 'U'], '<Plug>UniquifyCaseSenstiveLines',
+        \ 'uniquify-lines (case-senstive)', 0, 1)
+
+  let g:_spacevim_mappings_space.x.g = {'name' : '+Grammarous'}
+  " | `<Plug>(grammarous-move-to-info-window)`    | Move the cursor to the info window                   |
+  " | `<Plug>(grammarous-open-info-window)`       | Open the info window for the error under the cursor  |
+  " | `<Plug>(grammarous-reset)`                  | Reset the current check                              |
+  " | `<Plug>(grammarous-fixit)`                  | Fix the error under the cursor automatically         |
+  " | `<Plug>(grammarous-fixall)`                 | Fix all the errors in a current buffer automatically |
+  " | `<Plug>(grammarous-close-info-window)`      | Close the information window from checked buffer     |
+  " | `<Plug>(grammarous-remove-error)`           | Remove the error under the cursor                    |
+  " | `<Plug>(grammarous-disable-rule)`           | Disable the grammar rule under the cursor            |
+  " | `<Plug>(grammarous-move-to-next-error)`     | Move cursor to the next error                        |
+  " | `<Plug>(grammarous-move-to-previous-error)` | Move cursor to the previous error                    |
+  call SpaceVim#mapping#space#def('nmap', ['x', 'g', 'n'], '<Plug>(grammarous-move-to-next-error)', 'move-cursor-to-next-error', 0, 1)
+  call SpaceVim#mapping#space#def('nmap', ['x', 'g', 'p'], '<Plug>(grammarous-move-to-previous-error)', 'move-cursor-to-previous-error', 0, 1)
+
   call SpaceVim#mapping#space#def('nnoremap', ['i', 'p', 1], 'call call('
         \ . string(s:_function('s:insert_simple_password')) . ', [])',
         \ 'insert-simple-password', 1)
@@ -198,7 +351,11 @@ function! SpaceVim#layers#edit#config() abort
         \ 'move-text-up(enter-transient-state)', 1)
 
   " transpose
-  let g:_spacevim_mappings_space.x.t = {'name' : '+transpose'}
+  if has_key(g:_spacevim_mappings_space.x, 't')
+    let g:_spacevim_mappings_space.x.t.name = '+Transpose/Translate'
+  else
+    let g:_spacevim_mappings_space.x.t = {'name' : '+Transpose'}
+  endif
   call SpaceVim#mapping#space#def('nnoremap', ['x', 't', 'c'], 'call call('
         \ . string(s:_function('s:transpose_with_previous')) . ', ["character"])',
         \ 'swap-current-character-with-previous-one', 1)
@@ -223,7 +380,42 @@ function! SpaceVim#layers#edit#config() abort
         \ 'SplitjoinJoin', 'join into a single-line statement', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['j', 'm'],
         \ 'SplitjoinSplit', 'split a one-liner into multiple lines', 1)
+  call SpaceVim#mapping#space#def('nnoremap', ['j', 'k'], 'j==', 'goto-next-line-and-indent', 0)
+
+  if has('nvim-0.6.0') && s:enable_hop
+    call SpaceVim#mapping#space#def('nmap', ['j', 'j'], 'HopChar1', 'jump-or-select-to-a-character', 1, 1)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'J'], 'HopChar2', 'jump-to-suite-of-two-characters', 1, 1)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'l'], 'HopLine', 'jump-or-select-to-a-line', 1, 1)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'w'], 'HopWord', 'jump-to-a-word', 1, 1)
+  else
+    " call SpaceVim#mapping#space#def('nmap', ['j', 'j'], '<Plug>(easymotion-overwin-f)', 'jump to a character', 0)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'j'], '<Plug>(better-easymotion-overwin-f)', 'jump-or-select-to-a-character', 0, 1)
+    nnoremap <silent> <Plug>(better-easymotion-overwin-f) :call <SID>better_easymotion_overwin_f(0)<Cr>
+    xnoremap <silent> <Plug>(better-easymotion-overwin-f) :<C-U>call <SID>better_easymotion_overwin_f(1)<Cr>
+    call SpaceVim#mapping#space#def('nmap', ['j', 'J'], '<Plug>(easymotion-overwin-f2)', 'jump-to-suite-of-two-characters', 0)
+    " call SpaceVim#mapping#space#def('nmap', ['j', 'l'], '<Plug>(easymotion-overwin-line)', 'jump to a line', 0)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'l'], '<Plug>(better-easymotion-overwin-line)', 'jump-or-select-to-a-line', 0, 1)
+    nnoremap <silent> <Plug>(better-easymotion-overwin-line) :call <SID>better_easymotion_overwin_line(0)<Cr>
+    xnoremap <silent> <Plug>(better-easymotion-overwin-line) :<C-U>call <SID>better_easymotion_overwin_line(1)<Cr>
+    call SpaceVim#mapping#space#def('nmap', ['j', 'v'], '<Plug>(easymotion-overwin-line)', 'jump-to-a-line', 0)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'w'], '<Plug>(easymotion-overwin-w)', 'jump-to-a-word', 0)
+    call SpaceVim#mapping#space#def('nmap', ['j', 'q'], '<Plug>(easymotion-overwin-line)', 'jump-to-a-line', 0)
+  endif
+  call SpaceVim#mapping#space#def('nnoremap', ['j', 'u'], 'call call('
+        \ . string(s:_function('s:jump_to_url')) . ', [])',
+        \ 'jump-to-url', 1)
 endfunction
+
+if has('nvim-0.6.0')
+  function! s:jump_to_url() abort
+    lua require('spacevim.plugin.hop').hintLines()
+  endfunction
+else
+  function! s:jump_to_url() abort
+    let g:EasyMotion_re_anywhere = 'http[s]*://'
+    call feedkeys("\<Plug>(easymotion-jumptoanywhere)")
+  endfunction
+endif
 
 function! s:transpose_with_previous(type) abort
   let l:save_register = @"
@@ -273,6 +465,51 @@ function! s:transpose_with_next(type) abort
     endif
   endif
   let @" = l:save_register
+endfunction
+
+function! s:better_easymotion_overwin_line(is_visual) abort
+  let current_line = line('.')
+  try
+    if a:is_visual
+      call EasyMotion#Sol(0, 2)
+    else
+      call EasyMotion#overwin#line()
+    endif
+    " clear cmd line
+    noautocmd normal! :
+    if a:is_visual
+      let last_line = line('.')
+      exe current_line
+      if last_line > current_line
+        exe 'normal! V' . (last_line - current_line) . 'j'
+      else
+        exe 'normal! V' . (current_line - last_line) . 'k'
+      endif
+    endif
+  catch /^Vim\%((\a\+)\)\=:E117/
+
+  endtry
+endfunction
+
+function! s:better_easymotion_overwin_f(is_visual) abort
+  let [current_line, current_col] = getpos('.')[1:2]
+  try
+    call EasyMotion#OverwinF(1)
+    " clear cmd line
+    noautocmd normal! :
+    if a:is_visual
+      let last_line = line('.')
+      let [last_line, last_col] = getpos('.')[1:2]
+      call cursor(current_line, current_col)
+      if last_line > current_line        
+        exe 'normal! v' . (last_line - current_line) . 'j0' . last_col . '|'
+      else
+        exe 'normal! v' . (current_line - last_line) . 'k0' . last_col . '|' 
+      endif
+    endif
+  catch /^Vim\%((\a\+)\)\=:E117/
+
+  endtry
 endfunction
 
 function! s:move_text_down_transient_state() abort   
@@ -586,6 +823,68 @@ function! s:insert_simple_password() abort
   normal! "kPl
   let @k = save_register
 endfunction
+
+function! s:duplicate_lines(visual) abort
+  if a:visual
+    call setline('.', getline("'<"))
+  elseif line('.') > 1
+    call setline('.', getline(line('.') - 1))
+  endif
+endfunction
+
+command! -nargs=0 -range=% ReverseLines :<line1>,<line2>call <sid>reverse_lines()
+function! s:reverse_lines() range
+  let rst = getline(a:firstline, a:lastline)
+  call reverse(rst)
+  call s:BUFFER.buf_set_lines(bufnr('.'), a:firstline-1 , a:lastline, 0, rst)
+endfunction
+
+function! s:uniquify_lines(visual, ignorecase) abort
+  if a:visual
+    let start_line = line("'<")
+    let end_line = line("'>")
+    let rst = []
+    for l in range(start_line, end_line)
+      if index(rst, getline(l), 0, a:ignorecase) ==# -1
+        call add(rst, getline(l))
+      endif
+    endfor
+    call s:BUFFER.buf_set_lines(bufnr('.'), start_line-1 , end_line, 0, rst)
+  else
+    if line('.') > 1
+      if a:ignorecase
+        if getline('.') ==? getline(line('.') - 1)
+          normal! dd
+        endif
+      else
+        if getline('.') ==# getline(line('.') - 1)
+          normal! dd
+        endif
+      endif
+    endif
+  endif
+endfunction
+
+function! s:toggle_case(visual, uppercase) abort
+  if a:visual
+    if a:uppercase == 1
+      normal! gvgU
+    elseif a:uppercase == -1
+      normal! gvgu
+    elseif a:uppercase == 0
+      normal! gv~
+    endif
+  else
+    if a:uppercase == 1
+      normal! gUl
+    elseif a:uppercase == -1
+      normal! gul
+    elseif a:uppercase == 0
+      normal! ~
+    endif
+  endif
+endfunction
+
 function! s:insert_stronger_password() abort
   let save_register = @k
   let @k = s:PASSWORD.generate_strong(v:count ? v:count : 12)
@@ -631,13 +930,13 @@ endfunction
 
 
 function! s:join_string_with() abort
-  if s:is_string(line('.'), col('.'))
+  if s:HI.is_string(line('.'), col('.'))
     let c = col('.')
     let a = 0
     let b = 0
     let _c = c
     while c > 0
-      if s:is_string(line('.'), c)
+      if s:HI.is_string(line('.'), c)
         let c -= 1
       else
         let a = c
@@ -646,7 +945,7 @@ function! s:join_string_with() abort
     endwhile
     let c = _c
     while c > 0
-      if s:is_string(line('.'), c)
+      if s:HI.is_string(line('.'), c)
         let c += 1
       else
         let b = c
@@ -659,16 +958,6 @@ function! s:join_string_with() abort
     let @m = l:save_register_m
   endif
 endfunction
-
-let s:string_hi = {
-      \ 'c' : 'cCppString',
-      \ 'cpp' : 'cCppString',
-      \ }
-
-function! s:is_string(l, c) abort
-  return synIDattr(synID(a:l, a:c, 1), 'name') == get(s:string_hi, &filetype, &filetype . 'String')
-endfunction
-
 
 " function() wrapper
 if v:version > 703 || v:version == 703 && has('patch1170')
@@ -702,6 +991,77 @@ function! s:parse(line) abort
   return s:VIM.parse_string(a:line)
 endfunction
 
+" 为插件定义普通模式和视觉模式映射
+nnoremap <silent> <Plug>ConvertToFullWidth :call <sid>ConvertFullHalfWidth('normal', 'fullWidth')<cr>
+vnoremap <silent> <Plug>ConvertToFullWidth :call <sid>ConvertFullHalfWidth('visual', 'fullWidth')<cr>
+
+nnoremap <silent> <Plug>ConvertToHalfWidth :call <sid>ConvertFullHalfWidth('normal', 'halfWidth')<cr>
+vnoremap <silent> <Plug>ConvertToHalfWidth :call <sid>ConvertFullHalfWidth('visual', 'halfWidth')<cr>
+
+nnoremap <silent> <Plug>ToggleFullHalfWidth :call <sid>ConvertFullHalfWidth('normal', 'toggleWidth')<cr>
+vnoremap <silent> <Plug>ToggleFullHalfWidth :call <sid>ConvertFullHalfWidth('visual', 'toggleWidth')<cr>
+
+" 定义转换函数
+function! s:ConvertFullHalfWidth(mode, widthType) abort
+  let save_cursor = getcurpos()
+  let save_register = getreg("k")
+  if a:mode == 'normal'
+    let cword = expand('<cword>')
+    if !empty(cword)
+      let rst = FullHalfWidthTranslator#Translate(cword, a:widthType)
+      if rst != cword
+          let @k = rst
+          normal! viw"kp
+      endif
+    endif
+  elseif a:mode == 'visual'
+    normal! gv
+    if mode() == "\<C-V>" " 块选择模式
+        let [line_start, column_start] = getpos("'<")[1:2]
+        let [line_end, column_end] = getpos("'>")[1:2]
+        if column_end < column_start
+            let [column_start, column_end] = [column_end, column_start]
+        endif
+        for line_num in range(line_start, line_end)
+            let line = getline(line_num)
+            " 将行文本转换为UTF-8编码
+            let line_utf8 = iconv(line, &encoding, 'UTF-8')
+            let selectedText = line_utf8[column_start - 1: column_end - 1]
+            let translatedText = FullHalfWidthTranslator#Translate(selectedText, a:widthType)
+            let newLine = line[:column_start - 2] . translatedText . line[column_end:]
+            call setline(line_num, newLine)
+        endfor
+    else
+    " 对其他模式的处理
+        if mode() == 'line'
+            normal! '[V']
+        elseif mode() == 'char'
+            normal! `[v`]
+        elseif mode() ==? 'v'
+            normal! gv
+        else
+            normal! '[v']
+        endif
+        " 行选择或字符选择模式的处理
+        normal! "ky
+        let selectedText = @k
+        let translatedText = FullHalfWidthTranslator#Translate(selectedText, a:widthType)
+        if translatedText != selectedText
+          call setreg('k', translatedText)
+          normal! gv"kp
+        endif
+    endif
+  endif
+  call setpos('.', save_cursor)
+  call setreg("k", save_register)
+endfunction
+
 function! SpaceVim#layers#edit#add_ft_head_tamplate(ft, tamp) abort
   call extend(s:ft_head_tp, {a:ft : a:tamp})
+endfunction
+
+function! SpaceVim#layers#edit#loadable() abort
+
+  return 1
+
 endfunction

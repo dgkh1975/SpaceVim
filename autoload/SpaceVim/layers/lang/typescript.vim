@@ -1,26 +1,49 @@
 "GetUserUserContext=============================================================================
 " typescript.vim --- lang#typescript layer for SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Shidong Wang < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Shidong Wang < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section lang#typescript, layer-lang-typescript
+" @section lang#typescript, layers-lang-typescript
 " @parentsection layers
 " This layer provides typescript development support for SpaceVim.
-" To enable this layer, add following sinippet into SpaceVim configuration
+" To enable this layer, add following snippet into SpaceVim configuration
 " file.
 " >
-"   [layers]
-"       name = "lang#typescript"
+"   [[layers]]
+"       name = 'lang#typescript'
 " <
-" @subsection mappings
+" @subsection key bindings
+"
+" The following key bindings works well in both vim and neovim.
 " >
-"   Ket binding          Description
+"   Key binding          Description
 "   ----------------------------------------
-"   g d                  defintion preview
+"   g D                  jump to type definition
+"   SPC l d              show document
+"   SPC l e              rename symbol
+"   SPC l i              import
+" <
+" The following key bindings only work in neovim.
+" >
+"   Key binding          Description
+"   ----------------------------------------
+"   SPC l f              run code fix
+"   SPC l p              preview definition
+"   SPC l t              view type
+"   SPC l R              show reference
+"   SPC l D              show errors
+"   SPC l o              organizes imports
+"   SPC l g d            generate JSDoc
+" <
+" The following key bindings only work in vim.
+" >
+"   Key binding          Description
+"   ----------------------------------------
+"   SPC l m              interface implementations
 " <
 
 function! SpaceVim#layers#lang#typescript#plugins() abort
@@ -54,6 +77,8 @@ function! SpaceVim#layers#lang#typescript#config() abort
         \ function('s:go_to_typescriptreact_def'))
   call SpaceVim#mapping#space#regesit_lang_mappings('typescript',
         \ function('s:on_typescript_ft'))
+  call SpaceVim#mapping#space#regesit_lang_mappings('typescriptreact',
+        \ function('s:on_typescript_ft'))
   call SpaceVim#plugins#repl#reg('typescript', ['ts-node', '-i'])
   call SpaceVim#plugins#runner#reg_runner('typescript', {
         \ 'exe' : 'ts-node',
@@ -61,6 +86,9 @@ function! SpaceVim#layers#lang#typescript#config() abort
         \ 'opt': [],
         \ })
   let g:neomake_typescript_enabled_makers = ['eslint']
+  if index(g:spacevim_project_rooter_patterns, 'tsconfig.json') == -1
+    call add(g:spacevim_project_rooter_patterns, 'tsconfig.json')
+  endif
   " does eslint support tsx?
   let g:neoformat_typescriptreact_prettier = {
         \ 'exe': 'prettier',
@@ -87,8 +115,8 @@ endfunction
 
 function! s:on_typescript_ft() abort
   if SpaceVim#layers#lsp#check_filetype('typescript')
+        \ || SpaceVim#layers#lsp#check_server('tsserver')
     nnoremap <silent><buffer> K :call SpaceVim#lsp#show_doc()<CR>
-
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'],
           \ 'call SpaceVim#lsp#show_doc()', 'show-document', 1)
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'],
@@ -101,25 +129,35 @@ function! s:on_typescript_ft() abort
       nnoremap <silent><buffer> K :<C-u>TSDoc<Cr>
       call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'], 'TSRename',
             \ 'rename-symbol', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'f'], 'TSGetCodeFix',
-            \ 'code fix', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'i'], 'TSImport',
-            \ 'import', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'p'], 'TSDefPreview',
-            \ 'preview definition', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 't'], 'TSType',
-            \ 'view type', 1)
     else
       nnoremap <silent><buffer> gD :<C-u>TsuTypeDefinition<Cr>
       call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'], 'TsuquyomiSignatureHelp',
             \ 'show document', 1)
       call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'e'], 'TsuquyomiRenameSymbol',
             \ 'rename symbol', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'i'], 'TsuImport',
-            \ 'import', 1)
-      call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'm'], 'TsuImplementation',
-            \ 'interface implementations', 1)
     endif
+  endif
+
+  if has('nvim')
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'f'], 'TSGetCodeFix',
+          \ 'code fix', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'i'], 'TSImport',
+          \ 'import', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'p'], 'TSDefPreview',
+          \ 'preview definition', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 't'], 'TSType',
+          \ 'view type', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'R'], 'TSRefs',
+          \ 'show reference', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'D'], 'TSGetDiagnostics',
+          \ 'show errors', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'o'], 'TSOrganizeImports',
+          \ 'organizes imports', 1)
+  else
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'i'], 'TsuImport',
+          \ 'import', 1)
+    call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'm'], 'TsuImplementation',
+          \ 'interface implementations', 1)
   endif
 
   " code runner
@@ -129,7 +167,7 @@ function! s:on_typescript_ft() abort
   " generate groups
   let g:_spacevim_mappings_space.l.g = {'name' : '+Generate'}
   call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'g', 'd'], 'JsDoc',
-        \ 'generate JSDoc', 1)
+        \ 'generate-JSDoc', 1)
 
   " REPL support
   let g:_spacevim_mappings_space.l.s = {'name' : '+Send'}
@@ -150,10 +188,12 @@ endfunction
 
 function! s:go_to_typescript_def() abort
   if !SpaceVim#layers#lsp#check_filetype('typescript')
+    " if lsp layer is not enabled for typescript, use following commands
     if has('nvim')
+      " TSDef is definded in nvim-typescript
       TSDef
     else 
-      call SpaceVim#lsp#go_to_def()
+      TsuDefinition
     endif
   else
     call SpaceVim#lsp#go_to_def()
@@ -164,9 +204,15 @@ function! s:go_to_typescriptreact_def() abort
     if has('nvim')
       TSDef
     else 
-      call SpaceVim#lsp#go_to_def()
+      TsuDefinition
     endif
   else
     call SpaceVim#lsp#go_to_def()
   endif
+endfunction
+
+function! SpaceVim#layers#lang#typescript#health() abort
+  call SpaceVim#layers#lang#typescript#plugins()
+  call SpaceVim#layers#lang#typescript#config()
+  return 1
 endfunction

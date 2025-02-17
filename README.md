@@ -1,56 +1,81 @@
-[![SpaceVim](https://spacevim.org/logo.png)](https://spacevim.org)
+<h1 align="center">
+<a href="https://spacevim.org">
+  <img src="https://spacevim.org/logo.png" width="440" alt="SpaceVim"/>
+  </a>
+</h1>
 
-[Wiki](https://github.com/SpaceVim/SpaceVim/wiki) \|
-[Community](https://spacevim.org/community/) \|
-[Sponsors](https://spacevim.org/sponsors/) \|
-[Twitter](https://twitter.com/SpaceVim) \|
-[Gitter **Chat**](https://gitter.im/SpaceVim/SpaceVim) \|
-[中文官网](https://spacevim.org/cn/)
+[Quick Start Guide](https://spacevim.org/quick-start-guide/) \|
+[Chat](https://chat.mozilla.org/#/room/#spacevim:matrix.org) \|
+[Documentation](https://spacevim.org/documentation/) \|
+[Layers](https://spacevim.org/layers/)
+
+[![build](https://img.shields.io/github/actions/workflow/status/SpaceVim/SpaceVim/check.yml?branch=master)](https://github.com/SpaceVim/SpaceVim/actions/workflows/check.yml?query=branch%3Amaster)
+[![Codecov coverage](https://img.shields.io/codecov/c/github/SpaceVim/SpaceVim.svg)](https://codecov.io/gh/SpaceVim/SpaceVim)
+[![Release](https://img.shields.io/badge/Release-2.4.0-8700FF.svg)](https://spacevim.org/SpaceVim-release-v2.4.0/)
+[![GPLv3 License](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://github.com/SpaceVim/SpaceVim/blob/master/LICENSE)
+
+![work-flow](https://img.spacevim.org/workflow.png)
 
 
-[![build](https://github.com/SpaceVim/SpaceVim/workflows/build/badge.svg)](https://github.com/SpaceVim/SpaceVim/actions?query=workflow%3Abuild)
-[![codecov](https://codecov.io/gh/SpaceVim/SpaceVim/branch/dev/graph/badge.svg)](https://codecov.io/gh/SpaceVim/SpaceVim/branch/master)
-[![Docker Build Status](https://img.shields.io/docker/build/spacevim/spacevim.svg)](https://hub.docker.com/r/spacevim/spacevim/)
-![Version](https://img.shields.io/badge/version-1.7.0--dev-8700FF.svg)
-[![GPLv3 License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
-[![Doc](https://img.shields.io/badge/doc-%3Ah%20SpaceVim-orange.svg)](doc/SpaceVim.txt)
+SpaceVim is a modular configuration of Vim and Neovim.
+It's inspired by spacemacs. It manages collections of plugins in layers,
+which help to collect related packages together to provide features.
+This approach helps keep the configuration organized and reduces
+overhead for the user by keeping them from having to think about
+what packages to install.
 
-![welcome page](https://user-images.githubusercontent.com/13142418/103414298-5e1da980-4bb8-11eb-96bc-b2e118f672b5.png)
+## Features
 
-[SpaceVim](https://spacevim.org/) is a community-driven modular Vim distribution. It manages collections
-of plugins in layers, which help to collect related packages together to provide IDE-like features.
+- **Modularization:** plugins and functions are organized in [layers](https://spacevim.org/layers/).
+- **Compatible api:** a series of [compatible APIs](https://spacevim.org/api/) for Vim/Neovim.
+- **Great documentation:** online [documentation](https://spacevim.org/documentation/) and `:h SpaceVim`.
+- **Better experience:** rewrite core plugins using lua
+- **Beautiful UI:** you'll love the awesome UI and its useful features.
+- **Mnemonic key bindings:** key binding guide will be displayed automatically
+- **Fast boot time:** Lazy-load 90% of plugins with [dein.vim](https://github.com/Shougo/dein.vim)
+- **Lower the risk of RSI:** by heavily using the space bar instead of modifiers.
+- **Consistent experience:** consistent experience between terminal and gui
 
-The last release is [v1.6.0](https://spacevim.org/SpaceVim-release-v1.6.0/), check out [following-HEAD](https://github.com/SpaceVim/SpaceVim/wiki/Following-HEAD) page for what happened since last release.
 
-**See the followings below for more information:**
+## Project Layout
 
-- [Quick Start Guide](https://spacevim.org/quick-start-guide/): A simple guide for Beginners.
-- [Documentation](https://spacevim.org/documentation/): The full documentation about using SpaceVim.
-- [Available Layers](https://spacevim.org/layers/): A list of all available layers included in SpaceVim.
+```txt
+├─ .ci/                           build automation
+├─ .github/                       issue/PR templates
+├─ .SpaceVim.d/                   project specific configuration
+├─ after/                         overrule or add to the distributed defaults
+├─ autoload/SpaceVim.vim          SpaceVim core file
+├─ autoload/SpaceVim/api/         Public APIs
+├─ autoload/SpaceVim/layers/      available layers
+├─ autoload/SpaceVim/plugins/     builtin plugins
+├─ autoload/SpaceVim/mapping/     mapping guide
+├─ colors/                        default colorscheme
+├─ docker/                        docker image generator
+├─ bundle/                        bundle plugins
+├─ lua/spacevim/plugin            builtin plugins(lua)
+├─ doc/                           help(cn/en)
+├─ docs/                          website(cn/en)
+├─ wiki/                          wiki(cn/en)
+├─ bin/                           executable
+└─ test/                          tests
+```
 
-## Support SpaceVim
+## Contribute
 
-This project exists thanks to all the people who [contributed](CONTRIBUTING.md),
+This project wouldn't exist without all the people who contributed,
 We are thankful for any contributions from the community.
 
 <a href="https://github.com/SpaceVim/SpaceVim/graphs/contributors"><img src="https://opencollective.com/spacevim/contributors.svg?width=890&button=false" /></a>
 
-The best way to support SpaceVim is to contribute to it either by reporting bugs.
-Helping the community on the [Gitter Chat](https://gitter.im/SpaceVim/SpaceVim) or sending pull requests.
-
-For more information please check our [development guidelines](https://spacevim.org/development/).
-
-If you use SpaceVim in your daily work and feel that it has made your life easier,
-please consider buying me a coffee once in a while!
-
-<a href='https://ko-fi.com/spacevim' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://az743702.vo.msecnd.net/cdn/kofi4.png?v=f' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-
-## Credits & Thanks
+## Credits
 
 - [Hack-SpaceVim](https://github.com/Gabirel/Hack-SpaceVim) by [@Gabirel](https://github.com/Gabirel)
 - [SpaceVimTutorial](https://everettjf.gitbooks.io/spacevimtutorial/content/) by [@everettjf](https://github.com/everettjf)
 - [10-minutes-to-SpaceVim](https://github.com/Jackiexiao/10-minutes-to-SpaceVim) by [@Jackiexiao](https://github.com/Jackiexiao)
-- [vimdoc](https://github.com/google/vimdoc) generate doc file for SpaceVim
+- [A First Look At SpaceVim](https://www.youtube.com/watch?v=iXPS_NHLj9k) by [@DistroTube](https://www.youtube.com/channel/UCVls1GmFKf6WlTraIb_IaJg)
+- [Getting Started With SpaceVim](https://www.youtube.com/watch?v=3xB501CJDB8) by [FOSS King](https://www.youtube.com/channel/UCfU_sitghekwveLh6yM_xuA)
+- [vimdoc](https://github.com/google/vimdoc): Vim help file generator
+- [spacemacs](https://www.spacemacs.org/): A community-driven Emacs distribution
 - Authors of all the plugins used in SpaceVim.
 
 <!-- vim:set nowrap: -->

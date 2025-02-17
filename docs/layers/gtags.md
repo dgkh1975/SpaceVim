@@ -44,7 +44,7 @@ this layer can be used to generate and update tags database automatically.
 ## Installation
 
 To use `gtags` layer, you first have to install [GNU Global](https://www.gnu.org/software/global/download.html).
-You can install global from the software repository of your OS or built from source.
+You can install global from the software repository of your OS or build it from source.
 
 **Install on Ubuntu:**
 
@@ -81,7 +81,7 @@ sudo make install
 
 ## Configuration
 
-gtags layer provides following options:
+gtags layer provides the following options:
 
 - `gtagslabel`: the backend of gtags command, you can use `ctags` or `pygments`. It is empty string by default.
   for example, to use pygments as backend:
@@ -94,6 +94,7 @@ gtags layer provides following options:
 
 - `auto_update`: Update gtags/ctags database automatically when save a file. Default is `true`.
 - `tags_cache_dir`: Setting the cache directory of tags. The default value is `~/.cache/SpaceVim/tags/`
+- `ctags_bin`: Setting the command or path of ctags. Default is `ctags`.
 
 ## Language Support
 
@@ -137,8 +138,8 @@ and use that as the backend the following additional languages will have tags cr
 
 ### Pygments languages
 
-In order to look up symbol references for any language not in the built in parser you must use the pygments backend.
-When this backend is used global actually uses both ctags and pygments to find the definitions
+In order to look up symbol references for any language not in the built-in parser, you must use the pygments backend.
+When this backend is used, global actually uses both ctags and pygments to find the definitions
 and uses of functions and variables as well as “other symbols”.
 
 If you enabled pygments (the best choice) and use that as the backend
@@ -155,10 +156,11 @@ the following additional languages will have tags created for them:
 
 ## Key bindings
 
-| Key Binding | Description                    |
-| ----------- | ------------------------------ |
-| `SPC m g c` | create a tag database          |
-| `SPC m g u` | manually update tag database   |
-| `SPC m g f` | jump to a file in tag database |
-| `SPC m g d` | find definitions               |
-| `SPC m g r` | find references                |
+| Key Binding | Description                         |
+| ----------- | ----------------------------------- |
+| `SPC m g c` | create a tag database               |
+| `SPC m g u` | manually update tag database        |
+| `SPC m g f` | jump to a file in tag database      |
+| `SPC m g d` | find definitions                    |
+| `SPC m g r` | find references                     |
+| `SPC m g j` | input a symbol and find definitions |

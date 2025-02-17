@@ -1,7 +1,7 @@
 "=============================================================================
 " mapping.vim --- mapping functions in SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -10,6 +10,7 @@ scriptencoding utf-8
 
 let s:BUFFER = SpaceVim#api#import('vim#buffer')
 let s:WIN = SpaceVim#api#import('vim#window')
+let s:VIM = SpaceVim#api#import('vim')
 
 
 let g:unite_source_menu_menus =
@@ -90,11 +91,20 @@ endfunction
 
 if get(g:, 'spacevim_snippet_engine', 'neosnippet') ==# 'neosnippet'
   function! SpaceVim#mapping#shift_tab() abort
+    if g:spacevim_autocomplete_method ==# 'coc' && coc#pum#visible()
+      return coc#pum#prev(1)
+    endif
     return pumvisible() ? "\<C-p>" : "\<Plug>delimitMateS-Tab"
   endfunction
 elseif get(g:, 'spacevim_snippet_engine', 'neosnippet') ==# 'ultisnips'
   function! SpaceVim#mapping#shift_tab() abort
-    return pumvisible() ? "\<C-p>" : "\<C-R>=UltiSnips#JumpForwards()\<CR>\<C-R>=cmp#ultisnips#JumpForward()\<CR>"
+    if pumvisible()
+      return "\<C-p>"
+    elseif g:spacevim_autocomplete_method ==# 'coc' && coc#pum#visible()
+      return coc#pum#prev(1)
+    else
+      return "\<C-R>=UltiSnips#JumpForwards()\<CR>\<C-R>=cmp#ultisnips#JumpForward()\<CR>"
+    endif
   endfunction
 endif
 
@@ -104,6 +114,14 @@ endfunction
 
 function! SpaceVim#mapping#enter() abort
   return SpaceVim#mapping#enter#i_enter()
+endfunction
+
+function! SpaceVim#mapping#g_capital_d() abort
+  if !empty(SpaceVim#mapping#g_capital_d#get())
+    call call(SpaceVim#mapping#g_capital_d#get(), [])
+  else
+    normal! gD
+  endif
 endfunction
 
 function! SpaceVim#mapping#gd() abort
@@ -128,6 +146,27 @@ function! SpaceVim#mapping#clear_buffers() abort
   endif
 endfunction
 
+function! SpaceVim#mapping#kill_buffer_expr() abort
+  let regexp = input('kill buffer by regexp:',
+        \ '')
+  if !empty(regexp)
+    let blisted = filter(range(1, bufnr('$')), 'bufname(v:val) =~ regexp')
+    for i in blisted
+      if i != bufnr('%')
+        try 
+          exe 'bw ' . i
+        catch
+        endtry
+      endif
+    endfor
+    noautocmd normal! :
+    echo printf('killed buffers done(%s)', regexp)
+  else
+    noautocmd normal! :
+    echo 'canceled!'
+  endif
+endfunction
+
 function! SpaceVim#mapping#split_previous_buffer() abort
   if bufnr('#') == -1
     call SpaceVim#util#echoWarn('There is no previous buffer')
@@ -149,6 +188,15 @@ function! SpaceVim#mapping#vertical_split_previous_buffer(...) abort
 endfunction
 
 function! SpaceVim#mapping#close_current_buffer(...) abort
+  if has('nvim-0.9.5')
+    lua require('spacevim.plugin.tabline').close_current_buffer()
+    return
+  endif
+  if index(
+        \ ['startify', 'defx'],
+        \ &filetype) !=# -1
+    return
+  endif
   let buffers = get(g:, '_spacevim_list_buffers', [])
   let bn = bufnr('%')
   let f = ''
@@ -159,7 +207,7 @@ function! SpaceVim#mapping#close_current_buffer(...) abort
       let rs = get(a:000, 0)
     else
       echon 'save changes to "' . bufname(bn) . '"?  Yes/No/Cancel'
-      let rs = nr2char(getchar())
+      let rs = s:VIM.getchar()
     endif
     echohl None
     if rs ==? 'y'
@@ -186,24 +234,40 @@ function! SpaceVim#mapping#close_current_buffer(...) abort
 
   let cmd_close_buf = 'bd' . f
   let index = index(buffers, bn)
-  if index != -1
-    if index == 0
-      if len(buffers) > 1
-        exe 'b' . buffers[1]
-        exe cmd_close_buf . bn
-      else
-        exe cmd_close_buf . bn
-        if exists(':Startify') ==# 2
-          Startify
-        endif
+  if index == 0
+    if len(buffers) > 1
+      exe 'b' . buffers[1]
+      exe cmd_close_buf . bn
+    else
+      exe cmd_close_buf . bn
+      if exists(':Startify') ==# 2
+        Startify
       endif
-    elseif index > 0
-      if index + 1 == len(buffers)
-        exe 'b' . buffers[index - 1]
+    endif
+  elseif index > 0
+    if index + 1 == len(buffers)
+      exe 'b' . buffers[index - 1]
+      exe cmd_close_buf . bn
+    else
+      exe 'b' . buffers[index + 1]
+      exe cmd_close_buf . bn
+    endif
+  else
+    if len(buffers) > 1
+      exe 'bp'
+      exe cmd_close_buf . bn
+    elseif len(buffers) ==# 1
+      if exists(':Startify') ==# 2
+        Startify
+      endif
+      try
         exe cmd_close_buf . bn
-      else
-        exe 'b' . buffers[index + 1]
-        exe cmd_close_buf . bn
+      catch
+      endtry
+    else
+      exe cmd_close_buf . bn
+      if exists(':Startify') ==# 2
+        Startify
       endif
     endif
   endif
@@ -217,7 +281,8 @@ function! SpaceVim#mapping#close_term_buffer(...) abort
     if bufexists(abuf)
       exe 'bd!' . abuf
     endif
-    " fuck the terminal windows
+    " can not close the terminal windows
+    " close again
     if get(w:, 'shell_layer_win', 0) == 1
       close
     endif
@@ -268,14 +333,20 @@ endfunction
 function! SpaceVim#mapping#clear_saved_buffers() abort
   call s:BUFFER.filter_do(
         \ {
-        \ 'expr' : [
-        \ 'buflisted(v:val)',
-        \ 'index(tabpagebuflist(), v:val) == -1',
-        \ 'getbufvar(v:val, "&mod") == 0',
-        \ ],
-        \ 'do' : 'noautocmd bd %d'
-        \ }
-        \ )
+          \ 'expr' : [
+            \ 'buflisted(v:val)',
+            \ 'index(tabpagebuflist(), v:val) == -1',
+            \ 'getbufvar(v:val, "&mod") == 0',
+            \ ],
+            \ 'do' : 'noautocmd bd %d'
+            \ }
+            \ )
+  " after update to neovim 0.9.1 the tabline does not redraw when clear
+  " buffers.
+  " https://github.com/neovim/neovim/issues/23989
+  if exists(':redrawtabline') == 2
+    redrawtabline
+  endif
 endfunction
 
 function! SpaceVim#mapping#format() abort
@@ -295,31 +366,16 @@ endfunction
 fu! SpaceVim#mapping#SmartClose() abort
   let ignorewin = get(g:,'spacevim_smartcloseignorewin',[])
   let ignoreft = get(g:, 'spacevim_smartcloseignoreft',[])
-  " in vim winnr('$') do not include popup.
-  " so we need to check the popuplist
-  " ref: https://github.com/vim/vim/issues/6474
-  if !has('nvim') 
-        \ && exists('*popup_list')
-        \ && exists('*popup_getoptions')
-        \ && exists('*popup_getpos')
-    let popup_count =  len(
-          \ filter(
-          \ map(
-          \ filter(popup_list(), 'popup_getpos(v:val).visible'),
-          \ 'popup_getoptions(v:val).tabpage'),
-          \ 'v:val == -1 || v:val ==0'))
-  else
-    let win_count = winnr('$')
-  endif
-  let num = win_count
-  for i in range(1,win_count)
+  let num = winnr('$')
+  for i in range(1,num)
     if index(ignorewin , bufname(winbufnr(i))) != -1 || index(ignoreft, getbufvar(bufname(winbufnr(i)),'&filetype')) != -1
       let num = num - 1
     elseif getbufvar(winbufnr(i),'&buftype') ==# 'quickfix'
       let num = num - 1
     elseif getwinvar(i, '&previewwindow') == 1 && winnr() !=# i
       let num = num - 1
-    elseif s:WIN.is_float(i)
+    elseif exists('*win_getid') && s:WIN.is_float(win_getid(i))
+      " in vim winnr('$') do not include popup.
       let num = num - 1
     endif
   endfor

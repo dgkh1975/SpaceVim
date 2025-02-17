@@ -1,9 +1,3 @@
-"=============================================================================
-" FILE: raw.vim
-" AUTHOR:  Shougo Matsushita <Shougo.Matsu at gmail.com>
-" License: MIT license
-"=============================================================================
-
 function! dein#types#raw#define() abort
   return s:type
 endfunction
@@ -27,12 +21,8 @@ function! s:type.init(repo, options) abort
 endfunction
 
 function! s:type.get_sync_command(plugin) abort
-  let path = a:plugin.path
-  if !isdirectory(path)
-    " Create script type directory.
-    call mkdir(path, 'p')
-  endif
+  call dein#util#_safe_mkdir(a:plugin.path)
 
-  let outpath = path . '/' . fnamemodify(a:plugin.repo, ':t')
+  let outpath = a:plugin.path . '/' . fnamemodify(a:plugin.repo, ':t')
   return dein#util#_download(a:plugin.repo, outpath)
 endfunction

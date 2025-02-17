@@ -1,7 +1,7 @@
 "=============================================================================
 " commands.vim --- commands in SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -27,7 +27,7 @@ function! SpaceVim#commands#load() abort
   command! -nargs=0 -bang SPDebugInfo call SpaceVim#logger#viewLog('<bang>' == '!')
   ""
   " view runtime log
-  command! -nargs=0 SPRuntimeLog call SpaceVim#logger#viewRuntimeLog()
+  command! -nargs=* SPRuntimeLog call SpaceVim#logger#viewRuntimeLog(<f-args>)
   ""
   " edit custom config file of SpaceVim, by default this command will open
   " global custom configuration file, '-l' option will load local custom
@@ -64,15 +64,16 @@ function! SpaceVim#commands#load() abort
   " defined already.
   command! DiffOrig vert new | set bt=nofile | r # | 0d_ | diffthis
         \ | wincmd p | diffthis
-  command! -nargs=* -complete=custom,SpaceVim#plugins#complete_plugs Plugin :call SpaceVim#plugins#Plugin(<f-args>)
-  "command for open project
+  ""
+  " Open specific project in @section(options-src_root)
   command! -nargs=+ -complete=custom,SpaceVim#plugins#projectmanager#complete_project OpenProject :call SpaceVim#plugins#projectmanager#OpenProject(<f-args>)
 
   command! -nargs=* -complete=custom,SpaceVim#plugins#pmd#complete PMD :call SpaceVim#plugins#pmd#run(<f-args>)
 
 
   ""
-  " Switch to alternate file based on {type}.
+  " Switch to alternate file based on {type}. for more info about alternate
+  " file configuration, checkout @section(plugins-alternate)
   command! -nargs=? -complete=custom,SpaceVim#plugins#a#complete -bang A :call SpaceVim#plugins#a#alt(<bang>0,<f-args>)
 endfunction
 

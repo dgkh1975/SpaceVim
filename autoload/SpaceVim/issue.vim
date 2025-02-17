@@ -1,7 +1,7 @@
 "=============================================================================
 " issue.vim --- issue reporter for SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
@@ -46,7 +46,7 @@ function! s:template() abort
         \ '',
         \ '## Environment Information',
         \ '',
-        \ '- OS: ' . SpaceVim#api#import('system').name,
+        \ '- OS: ' . SpaceVim#api#import('system').name(),
         \ '- vim version: ' . (has('nvim') ? '-' : s:CMP.version()),
         \ '- neovim version: ' . (has('nvim') ? s:CMP.version() : '-'),
         \ '- SpaceVim version: ' . g:spacevim_version,
@@ -113,12 +113,16 @@ function! s:spacevim_version() abort
   let pwd = getcwd()
   try
     exe 'cd ' . fnamemodify(g:_spacevim_root_dir, ':p:h')
-    let status = s:CMP.system('git rev-parse --short HEAD')
+    let status = s:CMP.systemlist('git rev-parse --short HEAD')
   catch
     exe 'cd ~/.SpaceVim'
-    let status = s:CMP.system('git rev-parse --short HEAD')
+    let status = s:CMP.systemlist('git rev-parse --short HEAD')
   endtry
   exe 'cd ' . pwd
-  return s:STR.trim(status)
+  if type(status) == 3
+    return s:STR.trim(join(status))
+  else
+    return ''
+  endif
   
 endfunction

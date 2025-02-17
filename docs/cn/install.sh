@@ -2,8 +2,8 @@
 
 #=============================================================================
 # install.sh --- bootstrap script for SpaceVim
-# Copyright (c) 2016-2020 Shidong Wang & Contributors
-# Author: Shidong Wang < wsdjeg at 163.com >
+# Copyright (c) 2016-2022 Shidong Wang & Contributors
+# Author: Shidong Wang < wsdjeg@outlook.com >
 # URL: https://spacevim.org
 # License: GPLv3
 #=============================================================================
@@ -84,7 +84,7 @@ On_IWhite='\033[0;107m'   # White
 # }}}
 
 # version
-Version='1.7.0-dev'
+Version='2.5.0-dev'
 #System name
 System="$(uname -s)"
 
@@ -138,7 +138,9 @@ fetch_repo () {
     success "SpaceVim 更新已完成"
   else
     info "正在安装 SpaceVim..."
-    git clone https://github.com/SpaceVim/SpaceVim.git "$HOME/.SpaceVim"
+    git clone --depth 1 https://github.com/wsdjeg/SpaceVim.git "$HOME/.SpaceVim"
+    cd "$HOME/.SpaceVim"
+    git fetch --tags
     success "SpaceVim 安装已完成"
   fi
 }
@@ -171,7 +173,7 @@ install_vim () {
 install_package_manager () {
   if [[ ! -d "$HOME/.cache/vimfiles/repos/github.com/Shougo/dein.vim" ]]; then
     info "正在安装 dein.vim"
-    git clone https://github.com/Shougo/dein.vim.git $HOME/.cache/vimfiles/repos/github.com/Shougo/dein.vim
+    git clone --depth 1 https://github.com/Shougo/dein.vim.git $HOME/.cache/vimfiles/repos/github.com/Shougo/dein.vim
     success "dein.vim 安装已完成"
   fi
 }
@@ -342,7 +344,7 @@ welcome () {
 
 # download_font {{{
 download_font () {
-  url="https://raw.githubusercontent.com/wsdjeg/DotFiles/7a75a186c6db9ad6f02cafba8d4c7bc78f47304c/local/share/fonts/${1// /%20}"
+  url="https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/SourceCodePro/Regular/complete/${1// /%20}"
   path="$HOME/.local/share/fonts/$1"
   if [[ -f "$path" ]]
   then
@@ -361,19 +363,7 @@ install_fonts () {
   if [[ ! -d "$HOME/.local/share/fonts" ]]; then
     mkdir -p $HOME/.local/share/fonts
   fi
-  download_font "DejaVu Sans Mono Bold Oblique for Powerline.ttf"
-  download_font "DejaVu Sans Mono Bold for Powerline.ttf"
-  download_font "DejaVu Sans Mono Oblique for Powerline.ttf"
-  download_font "DejaVu Sans Mono for Powerline.ttf"
-  download_font "DroidSansMonoForPowerlinePlusNerdFileTypesMono.otf"
-  download_font "Ubuntu Mono derivative Powerline Nerd Font Complete.ttf"
-  download_font "WEBDINGS.TTF"
-  download_font "WINGDNG2.ttf"
-  download_font "WINGDNG3.ttf"
-  download_font "devicons.ttf"
-  download_font "mtextra.ttf"
-  download_font "symbol.ttf"
-  download_font "wingding.ttf"
+  download_font "Sauce Code Pro Nerd Font Complete.ttf"
   info "正在构建字体缓存，请稍等..."
   if [ $System == "Darwin" ];then
     if [ ! -e "$HOME/Library/Fonts" ];then

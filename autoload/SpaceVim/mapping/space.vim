@@ -1,43 +1,24 @@
 "=============================================================================
 " space.vim --- Space key bindings
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 let s:BUF = SpaceVim#api#import('vim#buffer')
+let s:TIME = SpaceVim#api#import('time')
+let s:WIN = SpaceVim#api#import('vim#window')
 
 let s:file = expand('<sfile>:~')
 let s:funcbeginline =  expand('<slnum>') + 1
 function! SpaceVim#mapping#space#init() abort
-  let g:_spacevim_mappings_space = {}
-  let g:_spacevim_mappings_prefixs['[SPC]'] = {'name' : '+SPC prefix'}
-  let g:_spacevim_mappings_space.t = {'name' : '+Toggles'}
-  let g:_spacevim_mappings_space.t.h = {'name' : '+Toggles highlight'}
-  let g:_spacevim_mappings_space.t.m = {'name' : '+modeline'}
-  let g:_spacevim_mappings_space.T = {'name' : '+UI toggles/themes'}
-  let g:_spacevim_mappings_space.a = {'name' : '+Applications'}
-  let g:_spacevim_mappings_space.b = {'name' : '+Buffers'}
-  let g:_spacevim_mappings_space.f = {'name' : '+Files'}
-  let g:_spacevim_mappings_space.j = {'name' : '+Jump/Join/Split'}
-  let g:_spacevim_mappings_space.m = {'name' : '+Major-mode'}
-  let g:_spacevim_mappings_space.w = {'name' : '+Windows'}
-  let g:_spacevim_mappings_space.p = {'name' : '+Projects/Packages'}
-  let g:_spacevim_mappings_space.h = {'name' : '+Help'}
-  let g:_spacevim_mappings_space.n = {'name' : '+Narrow/Numbers'}
-  let g:_spacevim_mappings_space.q = {'name' : '+Quit'}
-  let g:_spacevim_mappings_space.l = {'name' : '+Language Specified'}
-  let g:_spacevim_mappings_space.s = {'name' : '+Searching/Symbol'}
-  let g:_spacevim_mappings_space.r = {'name' : '+Registers/rings/resume'}
-  let g:_spacevim_mappings_space.d = {'name' : '+Debug'}
+  call SpaceVim#logger#debug('init SPC key bindings')
   if s:has_map_to_spc()
     return
   endif
-  if g:spacevim_default_custom_leader ==# '<Space>'
-    nnoremap <silent><nowait> [SPC] :<c-u>LeaderGuide ' '<CR>
-    vnoremap <silent><nowait> [SPC] :<c-u>LeaderGuideVisual ' '<CR>
-  endif
+  nnoremap <silent><nowait> [SPC] :<c-u>LeaderGuide ' '<CR>
+  vnoremap <silent><nowait> [SPC] :<c-u>LeaderGuideVisual ' '<CR>
   exe printf('nmap %s [SPC]', g:spacevim_default_custom_leader)
   exe printf('vmap %s [SPC]', g:spacevim_default_custom_leader)
   if !g:spacevim_vimcompatible && g:spacevim_enable_language_specific_leader
@@ -79,6 +60,16 @@ function! SpaceVim#mapping#space#init() abort
         \ ]
         \ , 1)
   let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['w', 'f'], 'setlocal scrollbind!',
+        \ ['toggle-follow-mode',
+        \ [
+        \ '[SPC w f] is to toggle follow mode',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
   call SpaceVim#mapping#space#def('nnoremap', ['w', 'D'], 'ChooseWin | close | wincmd w',
         \ ['delete-window-(other-windows)',
         \ [
@@ -89,27 +80,27 @@ function! SpaceVim#mapping#space#init() abort
         \ ]
         \ , 1)
   let s:lnum = expand('<slnum>') + s:funcbeginline
-  call SpaceVim#mapping#space#def('nnoremap', ['w', 'f'], 'tabnew',
+  call SpaceVim#mapping#space#def('nnoremap', ['w', 'F'], 'tabnew',
         \ ['create-new-tab',
         \ [
-        \ '[SPC w f] is to create new tab',
+        \ '[SPC w F] is to create new tab',
         \ '',
         \ 'Definition: ' . s:file . ':' . s:lnum,
         \ ]
         \ ]
         \ , 1)
-  let s:lnum = expand('<slnum>') + s:funcbeginline
-  call SpaceVim#mapping#space#def('nnoremap', ['w', 'F'], 'call call('
-        \ . string(function('s:create_new_named_tab'))
-        \ . ', [])',
-        \ ['create-new-named-tab',
-        \ [
-        \ '[SPC w F] is to create new named tab',
-        \ '',
-        \ 'Definition: ' . s:file . ':' . s:lnum,
-        \ ]
-        \ ]
-        \ , 1)
+  "  let s:lnum = expand('<slnum>') + s:funcbeginline
+  "  call SpaceVim#mapping#space#def('nnoremap', ['w', 'F'], 'call call('
+  "        \ . string(function('s:create_new_named_tab'))
+  "        \ . ', [])',
+  "        \ ['create-new-named-tab',
+  "        \ [
+  "        \ '[SPC w F] is to create new named tab',
+  "        \ '',
+  "        \ 'Definition: ' . s:file . ':' . s:lnum,
+  "        \ ]
+  "        \ ]
+  "        \ , 1)
   let s:lnum = expand('<slnum>') + s:funcbeginline
   call SpaceVim#mapping#space#def('nnoremap', ['w', 'h'], 'wincmd h',
         \ ['window-left',
@@ -201,7 +192,9 @@ function! SpaceVim#mapping#space#init() abort
         \ ]
         \ , 1)
   let s:lnum = expand('<slnum>') + s:funcbeginline
-  call SpaceVim#mapping#space#def('nnoremap', ['w', 'm'], 'only',
+  call SpaceVim#mapping#space#def('nnoremap', ['w', 'm'], 'call call('
+        \ . string(function('s:maximize_minimize_win'))
+        \ . ', [])',
         \ ['maximize/minimize window',
         \ [
         \ '[SPC w m] is to maximize/minimize window',
@@ -359,8 +352,6 @@ function! SpaceVim#mapping#space#init() abort
         \ ]
         \ , 1)
 
-  let g:_spacevim_mappings_space.e = {'name' : '+Errors/Encoding'}
-  let g:_spacevim_mappings_space.B = {'name' : '+Global buffers'}
   if g:spacevim_relativenumber
     nnoremap <silent> [SPC]tn  :<C-u>setlocal nonumber! norelativenumber!<CR>
     let g:_spacevim_mappings_space.t.n = ['setlocal nonumber! norelativenumber!', 'toggle-line-number']
@@ -373,41 +364,145 @@ function! SpaceVim#mapping#space#init() abort
   call extend(g:_spacevim_mappings_prefixs['[SPC]'], get(g:, '_spacevim_mappings_space', {}))
 
   " Searching in current buffer
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 's'], "call SpaceVim#plugins#flygrep#open({'input' : input(\"grep pattern:\"), 'files': bufname(\"%\")})",
-        \ 'grep-in-current-buffer', 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'S'], "call SpaceVim#plugins#flygrep#open({'input' : expand(\"<cword>\"), 'files': bufname(\"%\")})",
-        \ 'grep-cword-in-current-buffer', 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 's'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : input("grep pattern:"), "files": bufname("%")}'
+        \ . ')',
+        \ ['grep-in-current-buffer',
+        \ [
+        \ 'SPC s s will search text in current buffer, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'S'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : expand("<cword>"), "files": bufname("%")}'
+        \ . ')',
+        \ ['grep-cword-in-current-buffer',
+        \ [
+        \ 'SPC s S will search the word under cursor within current buffer, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
   " Searching in all loaded buffers
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'b'], "call SpaceVim#plugins#flygrep#open({'input' : input(\"grep pattern:\"), 'files':'@buffers'})",
-        \ 'grep-in-all-buffers', 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'B'], "call SpaceVim#plugins#flygrep#open({'input' : expand(\"<cword>\"), 'files':'@buffers'})",
-        \ 'grep-cword-in-all-buffers', 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'b'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : input("grep pattern:"), "files": "@buffers"}'
+        \ . ')',
+        \ ['grep-in-all-buffers',
+        \ [
+        \ 'SPC s b will search text in all loaded buffers, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'B'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : expand("<cword>"), "files": "@buffers"}'
+        \ . ')',
+        \ ['grep-cword-in-all-buffers',
+        \ [
+        \ 'SPC s B will search cursor word in all loaded buffers, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
   " Searching in buffer directory
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'd'], "call SpaceVim#plugins#flygrep#open({'input' :"
-        \ . " input(\"grep pattern:\"), 'dir' : fnamemodify(expand('%'), ':p:h')})",
-        \ 'grep-in-buffer-directory', 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'D'], "call SpaceVim#plugins#flygrep#open({'input' :"
-        \ . " expand(\"<cword>\"), 'dir' : fnamemodify(expand('%'), ':p:h')})",
-        \ 'grep-cword-in-buffer-directory', 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'd'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : input("grep pattern:"), "dir": fnamemodify(expand("%"), ":p:h")}'
+        \ . ')',
+        \ ['grep-in-buffer-directory',
+        \ [
+        \ 'SPC s d will search text in buffer directory, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'D'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : expand("<cword>"), "dir": fnamemodify(expand("%"), ":p:h")}'
+        \ . ')',
+        \ ['grep-cword-in-buffer-directory',
+        \ [
+        \ 'SPC s d will search cursor word in buffer directory, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
   " Searching in files in an arbitrary directory
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'f'], "call SpaceVim#plugins#flygrep#open({'input' :"
-        \ . " input(\"grep pattern:\"), 'dir' : input(\"arbitrary dir:\", '', 'dir')})",
-        \ 'grep-in-arbitrary-directory', 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'f'],
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : input("grep pattern:"), "dir": input("arbitrary dir:", "", "dir")}'
+        \ . ')',
+        \ ['grep-in-arbitrary-directory',
+        \ [
+        \ 'SPC s f will search text in arbitrary directory, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'F'],
-        \ "call SpaceVim#plugins#flygrep#open({'input' :"
-        \ . " expand(\"<cword>\"), 'dir' : input(\"arbitrary dir:\", '', 'dir')})",
-        \ 'grep-cword-in-arbitrary-directory', 1)
+        \ 'call SpaceVim#plugins#flygrep#open('
+        \ . '{"input" : expand("<cword>"), "dir": input("arbitrary dir:", "", "dir")}'
+        \ . ')',
+        \ ['grep-cword-in-arbitrary-directory',
+        \ [
+        \ 'SPC s F will search cursor world in arbitrary directory, an input promot will be opened.',
+        \ 'The default searching tool is based on search_tools option',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
   " Searching in project
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'p'],
         \ 'call SpaceVim#plugins#flygrep#open(' .
         \ "{'input' : input(\"grep pattern:\"), 'dir' : get(b:, \"rootDir\", getcwd())})",
         \ 'grep-in-project', 1)
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'P'],
-        \ "call SpaceVim#plugins#flygrep#open({'input' : expand(\"<cword>\"), 'dir' : get(b:, \"rootDir\", getcwd())})",
-        \ 'grep-cword-in-project', 1)
+  if g:spacevim_flygrep_next_version && has('nvim-0.10.0')
+    call SpaceVim#mapping#space#def('nnoremap', ['s', 'P'],
+          \ "lua require('flygrep').open({input = vim.fn.expand('<cword>')})",
+          \ 'grep-cword-in-project', 1)
+  else
+    call SpaceVim#mapping#space#def('nnoremap', ['s', 'P'],
+          \ "call SpaceVim#plugins#flygrep#open({'input' : expand(\"<cword>\"), 'dir' : get(b:, \"rootDir\", getcwd())})",
+          \ 'grep-cword-in-project', 1)
+  endif
   " Searching background
-  call SpaceVim#mapping#space#def('nnoremap', ['s', 'j'],
-        \ 'call SpaceVim#plugins#searcher#find("", SpaceVim#mapping#search#default_tool()[0])', 'background-search-in-project', 1)
+  if has('nvim-0.7.0')
+    call SpaceVim#mapping#space#def('nnoremap', ['s', 'j'],
+          \ "lua require('spacevim.plugin.searcher').find('', require('spacevim.plugin.search').default_tool())", 'background-search-in-project', 1)
+  else
+    call SpaceVim#mapping#space#def('nnoremap', ['s', 'j'],
+          \ 'call SpaceVim#plugins#searcher#find("", SpaceVim#mapping#search#default_tool()[0])', 'background-search-in-project', 1)
+  endif
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'J'],
         \ 'call SpaceVim#plugins#searcher#find(expand("<cword>"),SpaceVim#mapping#search#default_tool()[0])',
         \ 'background-search-cwords-in-project', 1)
@@ -466,7 +561,7 @@ function! SpaceVim#mapping#space#init() abort
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'G', 'P'], 'call SpaceVim#mapping#search#grep("G", "P")',
         \ 'search cursor word in project with git-grep', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'G', 'f'], 'call SpaceVim#mapping#search#grep("G", "f")',
-        \ 'search in arbitrary directory  with git-grep', 1)
+        \ 'search in arbitrary directory with git-grep', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'G', 'F'], 'call SpaceVim#mapping#search#grep("G", "F")',
         \ 'search cursor word in arbitrary directory with git-grep', 1)
 
@@ -548,17 +643,61 @@ function! SpaceVim#mapping#space#init() abort
   call SpaceVim#mapping#space#def('nnoremap', ['s', 't', 'J'], 'call SpaceVim#plugins#searcher#find(expand("<cword>"), "pt")',
         \ 'Background search cursor words in project with pt', 1)
 
-  call SpaceVim#mapping#space#def('nnoremap', ['s', '/'], 'call SpaceVim#plugins#flygrep#open({})',
-        \ 'grep-on-the-fly', 1)
+  if g:spacevim_flygrep_next_version && has('nvim-0.10.0')
+    call SpaceVim#mapping#space#def('nnoremap', ['s', '/'], 'FlyGrep',
+          \ 'grep-on-the-fly', 1)
+  else
+    call SpaceVim#mapping#space#def('nnoremap', ['s', '/'], 'call SpaceVim#plugins#flygrep#open({})',
+          \ 'grep-on-the-fly', 1)
+  endif
 
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'c'], 'call SpaceVim#plugins#searcher#clear()',
         \ 'clear-search-results', 1)
 
+  " Tab key bindings:
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['F', 'D'], 'tabonly',
+        \ ['close-other-tabs',
+        \ [
+        \ 'SPC F D is to close all of other tabs',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ],
+        \ 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['F', 'n'], 'tabnew',
+        \ ['create-new-tab',
+        \ [
+        \ 'SPC F D is to create a new tab',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ],
+        \ 1)
+  let s:lnum = expand('<slnum>') + s:funcbeginline
+  call SpaceVim#mapping#space#def('nnoremap', ['F', 'd'], 'tabclose',
+        \ ['close-current-tab',
+        \ [
+        \ 'SPC F D is to close current tab',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ],
+        \ 1)
+
   "Symbol
-  nnoremap <silent> <plug>SpaceVim-plugin-iedit :call SpaceVim#plugins#iedit#start()<cr>
-  xnoremap <silent> <plug>SpaceVim-plugin-iedit :call SpaceVim#plugins#iedit#start(1)<cr>
+  if has('nvim-0.7.0')
+    nnoremap <silent> <plug>SpaceVim-plugin-iedit :lua require('spacevim.plugin.iedit').start()<cr>
+    xnoremap <silent> <plug>SpaceVim-plugin-iedit :lua require('spacevim.plugin.iedit').start(1)<cr>
+  else
+    nnoremap <silent> <plug>SpaceVim-plugin-iedit :call SpaceVim#plugins#iedit#start()<cr>
+    xnoremap <silent> <plug>SpaceVim-plugin-iedit :call SpaceVim#plugins#iedit#start(1)<cr>
+  endif
   call SpaceVim#mapping#space#def('nmap', ['s', 'e'], '<plug>SpaceVim-plugin-iedit',
-        \ 'start-iedit-mode', 0, 1)
+        \ 'start-iedit-with-all-matches', 0, 1)
+  call SpaceVim#mapping#space#def('nnoremap', ['s', 'E'], 'call SpaceVim#plugins#iedit#start({"selectall" : 0})',
+        \ 'start-iedit-with-current-match', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'H'], 'call SpaceVim#plugins#highlight#start(1)',
         \ 'highlight-all-symbols', 1)
   call SpaceVim#mapping#space#def('nnoremap', ['s', 'h'], 'call SpaceVim#plugins#highlight#start(0)',
@@ -568,7 +707,26 @@ function! SpaceVim#mapping#space#init() abort
   call SpaceVim#mapping#space#def('nnoremap', ['h', 'd', 'k'],
         \ 'call SpaceVim#plugins#help#describe_key()',
         \ 'describe-key-bindings', 1)
-  call SpaceVim#custom#SPC('nnoremap', ['a', 'o'], 'call SpaceVim#plugins#todo#list()', 'open-todo-manager', 1)
+  let s:lnum = expand('<slnum>') + 3
+  call SpaceVim#mapping#space#def('nnoremap', ['h', 'd', 't'], 'call call('
+        \ . string(function('s:describe_current_time'))
+        \ . ', [])', ['describe-current-time',
+        \ [
+        \ 'SPC h d t is to display current time.',
+        \ '',
+        \ 'Definition: ' . s:file . ':' . s:lnum,
+        \ ]
+        \ ]
+        \ , 1)
+  if has('nvim-0.7.0')
+    call SpaceVim#mapping#space#def('nnoremap', ['a', 'o'], 'lua require("spacevim.plugin.todo").list()', 'open-todo-manager', 1)
+  else
+    call SpaceVim#mapping#space#def('nnoremap', ['a', 'o'], 'call SpaceVim#plugins#todo#list()', 'open-todo-manager', 1)
+  endif
+
+  if has('nvim-0.9.5')
+    call SpaceVim#mapping#space#def('nnoremap', ['a', 'r'], 'lua require("spacevim.plugin.record-key").toggle()', 'toggle-record-keyboard', 1)
+  endif
 endfunction
 
 function! SpaceVim#mapping#space#def(m, keys, cmd, desc, is_cmd, ...) abort
@@ -663,8 +821,8 @@ function! SpaceVim#mapping#space#refrashLSPC() abort
   endif
 
   " Customized mappings
-  if has_key(g:_spacevim_mappings_language_specified_space_custom_group_name, &filetype)
-    for argv in g:_spacevim_mappings_language_specified_space_custom_group_name[&filetype]
+  if has_key(g:_spacevim_mappings_lang_group_name, &filetype)
+    for argv in g:_spacevim_mappings_lang_group_name[&filetype]
       " Only support one layer of groups
       if !has_key(g:_spacevim_mappings_space.l, argv[0][0])
         let g:_spacevim_mappings_space.l[argv[0][0]] = {'name' : argv[1]}
@@ -682,6 +840,12 @@ endfunction
 
 function! SpaceVim#mapping#space#regesit_lang_mappings(ft, func) abort
   call extend(s:language_specified_mappings, {a:ft : a:func})
+endfunction
+
+function! SpaceVim#mapping#space#get_lang_mappings(ft) abort
+
+  return get(s:language_specified_mappings, a:ft, '')
+
 endfunction
 
 function! SpaceVim#mapping#space#langSPC(m, keys, cmd, desc, is_cmd, ...) abort
@@ -781,6 +945,33 @@ function! s:previous_buffer() abort
     echo 'no listed buffer'
     echohl None
   endtry
+endfunction
+
+function! s:maximize_minimize_win() abort
+  if s:WIN.win_count() == 1
+        \ && get(t:, '_maximize_previous_win', 0)
+        \ && tabpagenr('$') > 1
+    tabclose
+    if exists('*win_getid')
+      call win_gotoid(s:_maximize_previous_winid)
+    else
+      if tabpagenr('$') > 1 && tabpagenr() !=# tabpagenr('$')
+        tabprevious
+      endif
+    endif
+  else
+    if exists('*win_getid')
+      let s:_maximize_previous_winid = win_getid()
+    endif
+    tab split
+    let t:_maximize_previous_win = tabpagenr()
+  endif
+
+endfunction
+
+function! s:describe_current_time() abort
+  let time = s:TIME.current_date() . ' ' . s:TIME.current_time()
+  echo time
 endfunction
 
 " function() wrapper

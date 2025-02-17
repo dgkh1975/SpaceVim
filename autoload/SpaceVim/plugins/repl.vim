@@ -1,10 +1,42 @@
 "=============================================================================
 " repl.vim --- REPL process support for SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Shidong Wang < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Shidong Wang < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
+
+if has('nvim-0.9.0')
+  function! SpaceVim#plugins#repl#send(type, ...) abort
+    if a:type == 'raw'
+      lua require('spacevim.plugin.repl').send(
+            \ require('spacevim').eval('a:type'),
+            \ require('spacevim').eval("get(a:000, 0, '')")
+            \ )
+    else
+      lua require('spacevim.plugin.repl').send(
+            \ require('spacevim').eval('a:type')
+            \ )
+    endif
+  endfunction
+  function! SpaceVim#plugins#repl#start(ft) abort
+    lua require("spacevim.plugin.repl").start(
+          \ require("spacevim").eval("a:ft")
+          \ )
+  endfunction
+  function! SpaceVim#plugins#repl#status() abort
+    return luaeval('require("spacevim.plugin.repl").status()')
+  endfunction
+  function! SpaceVim#plugins#repl#reg(ft, execute) abort
+    lua require("spacevim.plugin.repl").reg(
+          \ require("spacevim").eval("a:ft"),
+          \ require("spacevim").eval("a:execute")
+          \ )
+  endfunction
+  finish
+endif
+
+
 
 ""
 " @section repl, usage-repl
@@ -26,6 +58,8 @@ let s:WINDOW = SpaceVim#api#import('vim#window')
 let s:STRING = SpaceVim#api#import('data#string')
 let s:SPI = SpaceVim#api#import('unicode#spinners') 
 
+let s:LOGGER =SpaceVim#logger#derive('repl')
+
 augroup spacevim_repl
   autocmd!
   autocmd VimLeavePre * call s:close()
@@ -33,9 +67,9 @@ augroup END
 
 
 function! SpaceVim#plugins#repl#start(ft) abort
-
+  call s:LOGGER.info('start repl for filetype:' . a:ft)
   let exe = get(s:exes, a:ft, '')
-
+  call s:LOGGER.info('get the command:' . a:ft)
   if !empty(exe)
     call s:start(exe)
   else
@@ -56,7 +90,7 @@ function! SpaceVim#plugins#repl#send(type, ...) abort
   if !exists('s:job_id')
     echom('Please start REPL via the key binding "SPC l s i" first.')
   elseif s:job_id == 0
-    echom('please retart the REPL')
+    echom('please restart the REPL')
   else
     if a:type ==# 'line'
       call s:JOB.send(s:job_id, [getline('.'), ''])
@@ -95,10 +129,6 @@ function! s:start(exe) abort
   call s:BUFFER.buf_set_lines(s:bufnr, s:lines , s:lines + 3, 0, ['[REPL executable] ' . string(a:exe), '', repeat('-', 20)])
   call s:WINDOW.set_cursor(s:winid, [s:BUFFER.line_count(s:bufnr), 0])
   let s:lines += 3
-  let s:_out_data = ['']
-  let s:_current_line = ''
-  " this only for has('nvim') && exists('*chanclose')
-  let s:_out_data = ['']
   let s:job_id =  s:JOB.start(a:exe,{
         \ 'on_stdout' : function('s:on_stdout'),
         \ 'on_stderr' : function('s:on_stderr'),
@@ -121,7 +151,7 @@ function! s:on_stdout(job_id, data, event) abort
     let s:lines += len(a:data)
     if s:WINDOW.get_cursor(s:winid)[0] == s:BUFFER.line_count(s:bufnr) - len(a:data)
       call s:WINDOW.set_cursor(s:winid, [s:BUFFER.line_count(s:bufnr), 0])
-    endi
+    endif
     call s:update_statusline()
   endif
 endfunction
@@ -200,6 +230,7 @@ function! s:open_windows() abort
   setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell nonu norelativenumber winfixheight nomodifiable
   set filetype=SpaceVimREPL
   nnoremap <silent><buffer> q :call <SID>close()<cr>
+  nnoremap <silent><buffer> i :call <SID>insert()<cr>
   augroup spacevim_repl
     autocmd!
     autocmd BufWipeout <buffer> call <SID>close_repl()
@@ -207,4 +238,14 @@ function! s:open_windows() abort
   let s:bufnr = bufnr('%')
   let s:winid = win_getid(winnr())
   wincmd p
+endfunction
+
+function! s:insert() abort
+  call inputsave()
+  let input = input('input >')
+  if !empty(input) && s:status.is_running == 1
+    call s:JOB.send(s:job_id, input)
+  endif
+  normal! :
+  call inputrestore()
 endfunction

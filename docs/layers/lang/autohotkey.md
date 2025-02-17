@@ -1,6 +1,6 @@
 ---
 title: "SpaceVim lang#autohotkey layer"
-description: "This layer adds AutohotKey language support to SpaceVim."
+description: "AutohotKey language support for SpaceVim, including syntax highlighting and code completion"
 ---
 
 # [Available Layers](../../) >> lang#autohotkey
@@ -15,7 +15,7 @@ description: "This layer adds AutohotKey language support to SpaceVim."
 
 ## Description
 
-This layer adds AutohotKey language support to SpaceVim.
+This layer adds [AutohotKey](https://www.autohotkey.com/) language support to SpaceVim.
 
 ## Features
 
@@ -24,7 +24,7 @@ This layer adds AutohotKey language support to SpaceVim.
 
 ## Install
 
-To use this configuration layer, update custom configuration file with:
+To use this configuration layer, update your custom configuration file with:
 
 ```toml
 [[layers]]

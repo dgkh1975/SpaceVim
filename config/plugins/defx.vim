@@ -1,6 +1,6 @@
 "=============================================================================
 " defx.vim --- defx configuration
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
 " Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
@@ -11,6 +11,7 @@ scriptencoding utf-8
 let s:SYS = SpaceVim#api#import('system')
 let s:FILE = SpaceVim#api#import('file')
 let s:VCOP = SpaceVim#api#import('vim#compatible')
+let s:WIN = SpaceVim#api#import('vim#window')
 
 if g:spacevim_filetree_direction ==# 'right'
   let s:direction = 'rightbelow'
@@ -19,11 +20,11 @@ else
 endif
 
 function! s:setcolum() abort
-  if g:spacevim_enable_vimfiler_filetypeicon && !g:spacevim_enable_vimfiler_gitstatus
+  if g:_spacevim_enable_filetree_filetypeicon && !g:_spacevim_enable_filetree_gitstatus
     return 'indent:icons:filename:type'
-  elseif !g:spacevim_enable_vimfiler_filetypeicon && g:spacevim_enable_vimfiler_gitstatus
+  elseif !g:_spacevim_enable_filetree_filetypeicon && g:_spacevim_enable_filetree_gitstatus
     return 'indent:git:filename:type'
-  elseif g:spacevim_enable_vimfiler_filetypeicon && g:spacevim_enable_vimfiler_gitstatus
+  elseif g:_spacevim_enable_filetree_filetypeicon && g:_spacevim_enable_filetree_gitstatus
     return 'indent:git:icons:filename:type'
   else
     return 'mark:indent:icon:filename:type'
@@ -61,7 +62,7 @@ augroup vfinit
   autocmd FileType defx call s:defx_init()
   " auto close last defx windows
   autocmd BufEnter * nested if
-        \ (!has('vim_starting') && winnr('$') == 1  && g:_spacevim_autoclose_filetree
+        \ (!has('vim_starting') && s:WIN.win_count() == 1  && g:_spacevim_autoclose_filetree
         \ && &filetype ==# 'defx') |
         \ call s:close_last_vimfiler_windows() | endif
 augroup END
@@ -138,8 +139,7 @@ function! s:defx_init()
         \ defx#do_action('drop', 'split')
   nnoremap <silent><buffer><expr> st
         \ defx#do_action('drop', 'tabedit')
-  nnoremap <silent><buffer><expr> p
-        \ defx#do_action('open', 'pedit')
+  nnoremap <silent><buffer><expr> p defx#do_action('call', g:defx_config_sid . 'DefxPreview')
   nnoremap <silent><buffer><expr> K
         \ defx#do_action('new_directory')
   nnoremap <silent><buffer><expr> N
@@ -173,6 +173,7 @@ function! s:defx_init()
         \ defx#get_context().winwidth + 10)
   nnoremap <silent><buffer><expr> < defx#do_action('resize',
         \ defx#get_context().winwidth - 10)
+  doautocmd User DefxInit
 endf
 
 " in this function we should vim-choosewin if possible
@@ -198,6 +199,27 @@ function! s:DefxSmartL(_)
     endif
   endif
 endfunction
+
+function! s:DefxPreview(_) abort
+  if s:preview_windows_opened()
+    pclose
+  else
+    if !defx#is_directory()
+      let filepath = defx#get_candidate()['action__path']
+      exe 'topleft pedit ' . filepath
+    endif
+  endif
+endfunction
+
+fun! s:preview_windows_opened()
+  for nr in range(1, winnr('$'))
+    if getwinvar(nr, "&pvw") == 1
+      " found a preview
+      return 1
+    endif  
+  endfor
+  return 0
+endfun
 
 function! s:DefxSmartH(_)
   " if cursor line is first line, or in empty dir
@@ -272,6 +294,9 @@ function! s:DefxPasteFile(_) abort
     let path = fnamemodify(path, ':p:h')
   endif
 
+  " If you have xclip-pastefile in your PATH.
+  " this command will be run on action directory
+  " support paste file which is copied outside of vim.
   if executable('xclip-pastefile')
     let old_wd = getcwd()
     if old_wd == path
@@ -281,10 +306,18 @@ function! s:DefxPasteFile(_) abort
       call s:VCOP.systemlist(['xclip-pastefile'])
       noautocmd exe 'cd' fnameescape(old_wd)
     endif
-  elseif s:SYS.isWindows && !empty(s:copyed_file_path)
+    return
+  endif
+
+  if s:SYS.isWindows && !empty(s:copyed_file_path)
     " in windows, use copy command for paste file.
     let destination = path . s:FILE.separator . fnamemodify(s:copyed_file_path, ':t')
     let cmd = 'cmd /c copy ' . shellescape(s:copyed_file_path) . ' ' . shellescape(destination)
+    call s:VCOP.systemlist(cmd)
+  elseif !s:SYS.isWindows && !empty(s:copyed_file_path)
+    " in Linux or MacOS, use cp command for paste file.
+    let destination = path . s:FILE.separator . fnamemodify(s:copyed_file_path, ':t')
+    let cmd = 'cp -r ' . shellescape(s:copyed_file_path) . ' ' . shellescape(destination)
     call s:VCOP.systemlist(cmd)
   endif
   if v:shell_error

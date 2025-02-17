@@ -1,6 +1,7 @@
 scriptencoding utf-8
 
-let s:LOGGER =SpaceVim#logger#derive('gtags')
+let s:LOGGER = SpaceVim#logger#derive('gtags')
+call s:LOGGER.start_debug()
 
 if !executable('gtags')
   call s:LOGGER.warn('gtags is not executable, you need to install gnu global!')
@@ -12,6 +13,7 @@ if exists('g:loaded_gtags')
 endif
 let s:JOB = SpaceVim#api#import('job')
 let s:FILE = SpaceVim#api#import('file')
+let s:NOTI = SpaceVim#api#import('notify')
 
 let g:loaded_gtags = 1
 let s:version = split(matchstr(split(system('gtags --version'), '\n')[0], '[0-9]\+\.[0-9]\+'), '\.')
@@ -24,13 +26,11 @@ let g:gtags_global_command = get(g:, 'gtags_global_command',
       \ )
 
 ""
-" Enable/Disable default mappings. By default it is disabled.
-let g:gtags_auto_map = get(g:, 'gtags_auto_map', 0)
-
-""
 " This setting will open the |quickfix| list when adding entries. A value of 2 will
 " preserve the cursor position when the |quickfix| window is
 " opened. Defaults to 2.
+"
+" NOTE: when there is only one entry. the quickfix list will not be opened.
 let g:gtags_open_list = get(g:, 'gtags_open_list', 2)
 
 " -- ctags-x format
@@ -126,9 +126,9 @@ endif
 " Display error message.
 "
 function! s:Error(msg) abort
-  echohl WarningMsg |
-        \ echomsg 'Error: ' . a:msg |
-        \ echohl None
+  " use notify to display error message
+  "
+  call s:NOTI.notify(a:msg, 'WarningMsg')
 endfunction
 "
 " Extract pattern or option string.
@@ -212,6 +212,17 @@ function! s:TrimOption(option) abort
   return l:option
 endfunction
 
+function! s:ExecGlobal(cmd) abort
+  call s:LOGGER.debug('$GTAGSROOT is: ' . $GTAGSROOT)
+  call s:LOGGER.debug('$GTAGSDBPATH is: ' . $GTAGSDBPATH)
+  call s:LOGGER.debug('cmd is: ' . a:cmd)
+  let l:result = system(a:cmd)
+  if v:shell_error !=# 0
+    call s:LOGGER.debug('failed to run, v:shell_error is ' . v:shell_error)
+  endif
+  return l:result
+endfunction
+
 "
 " Execute global and load the result into quickfix window.
 "
@@ -242,38 +253,15 @@ function! s:ExecLoad(option, long_option, pattern) abort
     let l:cmd = g:gtags_global_command . ' ' . l:option . 'e ' . g:Gtags_Shell_Quote_Char . a:pattern . g:Gtags_Shell_Quote_Char
   endif
 
-  let l:restore_gtagsroot = 0
-  if empty($GTAGSROOT)
-    let $GTAGSROOT = SpaceVim#plugins#projectmanager#current_root()
-    let l:restore_gtagsroot = 1
-  endif
+  let l:result = s:ExecGlobal(l:cmd)
 
-  let l:restore_gtagsdbpath = 0
-  if empty($GTAGSDBPATH)
-    let $GTAGSDBPATH = s:FILE.unify_path(g:tags_cache_dir) . s:FILE.path_to_fname($GTAGSROOT)
-    let l:restore_gtagsdbpath = 1
-  endif
-
-  let l:result = system(l:cmd)
-
-  " restore $GTAGSROOT and $GTAGSDBPATH to make it possible to switch
-  " between multiple projects or parent/child projects
-  if l:restore_gtagsroot
-    let $GTAGSROOT = ''
-  endif
-
-  if l:restore_gtagsdbpath
-    let $GTAGSDBPATH = ''
-  endif
-
-  e
   if v:shell_error != 0
     if v:shell_error == 2
       call s:Error('invalid arguments. (gtags.vim requires GLOBAL 5.7 or later)')
     elseif v:shell_error == 3
       call s:Error('GTAGS not found.')
     else
-      call s:Error('global command failed. command line: ' . l:cmd)
+      call s:Error('global command failed.')
     endif
     return
   endif
@@ -292,19 +280,27 @@ function! s:ExecLoad(option, long_option, pattern) abort
 
   call s:Memorize()
 
-  " Open the quickfix window
-  if g:gtags_open_list == 1
-    botright copen
-  elseif g:gtags_open_list == 2
-    call s:save_prev_windows()
-    botright copen
-    call s:restore_prev_windows()
-  endif
   " Parse the output of 'global -x or -t' and show in the quickfix window.
   let l:efm_org = &efm
   let &efm = g:Gtags_Efm
-  cexpr! l:result
+
+  cgetexpr l:result
+
   let &efm = l:efm_org
+
+  " If there is only one item, jump to the position.
+  if len(getqflist()) ==# 1
+    silent cc
+  else
+    " Open the quickfix list windows only when there multiple results.
+    if g:gtags_open_list == 1
+      botright copen
+    elseif g:gtags_open_list == 2
+      call s:save_prev_windows()
+      botright copen
+      call s:restore_prev_windows()
+    endif
+  endif
 endfunction
 
 let s:prev_windows = []
@@ -342,7 +338,7 @@ endfunction
 " RunGlobal()
 "
 function! gtags#global(line) abort
-  call gtags#logger#log('info', a:line)
+  call s:LOGGER.debug('gtags global command: Gtags ' . a:line)
   let l:pattern = s:Extract(a:line, 'pattern')
 
   if l:pattern ==# '%'
@@ -357,7 +353,7 @@ function! gtags#global(line) abort
     if l:option =~# 'f'
       let l:line = input('Gtags for file: ', expand('%'), 'file')
     else
-      let l:line = input('Gtags for pattern: ', expand('<cword>'), 'custom,GtagsCandidateCore')
+      let l:line = input('Gtags for pattern: ', expand('<cword>'), 'custom,gtags#complete')
     endif
     let l:pattern = s:Extract(l:line, 'pattern')
     if l:pattern ==# ''
@@ -429,7 +425,7 @@ function! s:GtagsCandidateCore(lead, ...) abort
     endif
     return glob(l:pattern)
   else
-    let l:cands = system(g:gtags_global_command . ' ' . '-c' . s:option . ' ' . a:lead)
+    let l:cands = s:ExecGlobal(g:gtags_global_command . ' ' . '-c' . s:option . ' ' . a:lead)
     if v:shell_error == 0
       return l:cands
     endif
@@ -448,8 +444,17 @@ endfunction
 
 
 function! gtags#update(single_update) abort
+  call s:LOGGER.debug('start to update gtags database')
   let dir = s:FILE.unify_path(g:tags_cache_dir) 
         \ . s:FILE.path_to_fname(SpaceVim#plugins#projectmanager#current_root())
+  call s:LOGGER.debug('            dir:' . dir)
+  call s:LOGGER.debug('         single:' . a:single_update)
+  if !isdirectory(dir)
+    if !mkdir(dir, 'p')
+      call s:LOGGER.debug('failed to create dir:' . dir)
+      return
+    endif
+  endif
   let cmd = ['gtags']
   if !empty(g:gtags_gtagslabel)
     let cmd += ['--gtagslabel=' . g:gtags_gtagslabel]
@@ -459,16 +464,14 @@ function! gtags#update(single_update) abort
   else
     let cmd += ['--skip-unreadable']
   endif
-  if !isdirectory(dir)
-    call mkdir(dir, 'p')
-  endif
   let cmd += ['-O', dir]
-  call s:JOB.start(cmd, {'on_exit' : funcref('s:on_update_exit')})
+  call s:LOGGER.debug('      gtags cmd:' . string(cmd))
+  call s:LOGGER.debug('   gtags job id:' . s:JOB.start(cmd, {'on_exit' : funcref('s:on_update_exit')}))
 endfunction
 
-function! s:on_update_exit(...) abort
-  if str2nr(a:2) > 0 && !g:gtags_silent
-    call s:LOGGER.warn('failed to update gtags, exit data: ' . a:2)
+function! s:on_update_exit(id, data, event) abort
+  if a:data > 0 && !g:gtags_silent
+    call s:LOGGER.warn('failed to update gtags, exit data: ' . a:data)
   endif
 endfunction
 

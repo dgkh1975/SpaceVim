@@ -1,10 +1,25 @@
 "=============================================================================
 " todo.vim --- todo manager for SpaceVim
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
+
+""
+" @section todo manager, plugins-todomanager
+" @parentsection plugins
+" The `todomanager` plugin provides todo manager support for SpaceVim.
+" 
+" @subsection Key bindings
+" >
+"   Key binding     Description
+"   SPC a o         open todo manager windows
+" <
+" 
+" @subsection Configuration
+"
+" The todo manager labels can be set via @section(options-todo_labels)
 
 let s:JOB = SpaceVim#api#import('job')
 let s:BUFFER = SpaceVim#api#import('vim#buffer')
@@ -27,7 +42,8 @@ function! SpaceVim#plugins#todo#list() abort
   call s:open_win()
 endfunction
 
-let s:bufnr = 0
+let s:bufnr = -1
+let s:todo_jobid = -1
 
 function! s:open_win() abort
   if s:bufnr != 0 && bufexists(s:bufnr)
@@ -35,7 +51,7 @@ function! s:open_win() abort
   endif
   botright split __todo_manager__
   " @todo add win_getid api
-  let s:winid = win_getid(winnr('#'))
+  let s:winnr = winnr('#')
   let lines = &lines * 30 / 100
   exe 'resize ' . lines
   setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell nonu norelativenumber winfixheight nomodifiable
@@ -51,7 +67,7 @@ endfunction
 
 function! s:WinEnter() abort
   " @todo add win_getid api
-  let s:winid = win_getid(winnr('#'))
+  let s:winnr = winnr('#')
 endfunction
 
 " @todo Improve todo manager
@@ -60,8 +76,10 @@ function! s:update_todo_content() abort
         \ && type(g:spacevim_todo_labels) == type([])
         \ && !empty(g:spacevim_todo_labels)
     let s:labels = g:spacevim_todo_labels
+    let s:prefix = g:spacevim_todo_prefix
   else
-    let s:labels = map(['fixme', 'question', 'todo', 'idea'], '"@" . v:val')
+    let s:labels = ['fixme', 'question', 'todo', 'idea']
+    let s:prefix = '@'
   endif
 
   let s:todos = []
@@ -76,6 +94,8 @@ function! s:update_todo_content() abort
     let argv += ['.']
   elseif s:SYS.isWindows && s:grep_default_exe ==# 'findstr'
     let argv += ['*.*']
+  elseif !s:SYS.isWindows && s:grep_default_exe ==# 'rg'
+    let argv += ['./']
   endif
   let argv += s:grep_default_ropt
   call s:LOG.info('cmd: ' . string(argv))
@@ -136,7 +156,6 @@ function! s:exit(id, data, event ) abort
         \ .  "v:val.title"
   let lines = map(deepcopy(s:todos),expr)
   call s:BUFFER.buf_set_lines(s:bufnr, 0 , -1, 0, lines)
-  let g:wsd = s:todos
 endfunction
 
 function! s:compare_todo(a, b) abort
@@ -147,12 +166,13 @@ endfunction
 
 function! s:open_todo() abort
   let todo = s:todos[line('.') - 1]
-  try
-    close
-  catch
-  endtry
-  " @todo add win_gotoid api
-  call win_gotoid(s:winid)
+  if g:spacevim_todo_close_list
+    try
+      close
+    catch
+    endtry
+  endif
+  exe s:winnr .  'wincmd w'
   exe 'e ' . todo.file
   call cursor(todo.line, todo.column)
   noautocmd normal! :
@@ -172,8 +192,8 @@ function! s:get_labels_regex()
     let separator = '|'
   endif
 
-  return join(map(copy(s:labels), "v:val . '\\b'"),
-  \ separator)
+  return join(map(copy(s:labels), "s:prefix . v:val . '\\b'"),
+        \ separator)
 endfunc
 
 function! s:get_labels_pattern()

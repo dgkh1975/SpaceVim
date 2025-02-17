@@ -11,8 +11,6 @@ lang: zh
 - [模块简介](#模块简介)
 - [功能特性](#功能特性)
 - [模块选项](#模块选项)
-- [快捷键](#快捷键)
-  - [多光标支持](#多光标支持)
 
 <!-- vim-markdown-toc -->
 
@@ -33,47 +31,28 @@ lang: zh
 
 ## 模块选项
 
-- `textobj`: specified a list of text opjects to be enabled, the avaliable list is: `indent`, `line`, `entire`
-
-## 快捷键
-
-| 快捷键             | 功能描述               |
-| ------------------ | ---------------------- |
-| `SPC x a {分隔符}` | 基于分隔符进行文本对齐 |
-
-默认的分隔符：
-
-- `=`: 对齐 `===`, `==`, `!=`, `>=` 等
-- `&`: 对齐 `&`
-- `¦`: 对齐 `¦`
-- `|`: 对齐 `|`
-- `;`: 对齐 `;`
-- `:`: 对齐 `:`
-- `,`: 对齐 `,`
-- `.`: 对齐 `.`
-- `[`: 对齐 `[`
-- `(`: 对齐 `(`
-- `{`: 对齐 `{`
-- `]`: 对齐 `]`
-- `}`: 对齐 `}`
-- `)`: 对齐 `)`
-- `[SPC]`: 对齐 `[SPC]`
-- `o`: 对齐 `+ - * / % ^` 等
-- `r`: 对齐用户输入的正则表达式
-
-### 多光标支持
-
-在 Visual 模式下可使用 Ctrl+n 按键选择下一个匹配位置。此时文档中所有匹配项都会被高亮，选中的匹配位置会有特殊高亮。
-可使用 Ctrl+x 按键跳过当前位置。
-
-| 快捷键      | 功能描述                             |
-| ----------- | ------------------------------------ |
-| `SPC x j c` | 居中对齐当前段落                     |
-| `SPC x j f` | set the justification to full (TODO) |
-| `SPC x j l` | 左对齐当前段落                       |
-| `SPC x j n` | set the justification to none (TODO) |
-| `SPC x j r` | 右对齐当前段落                       |
-| `SPC x u`   | 将选中字符串转为小写                 |
-| `SPC x U`   | 将选中字符串转为大写                 |
-| `SPC x w c` | 统计选中区域的单词数                 |
-
+- `textobj`: 设定启用的文本对象列表，可用列表包括：`indent`, `line`, `entire`
+- `autosave_timeout`: 设置自动保存的时间间隔，默认是0，表示未开启定时自动保存。这个选项设定的值需要是毫秒数，并且需要小于100\*60\*1000 (100 分钟) 且 大于1000（1秒）。比如设定成每隔5分钟自动保存一次：
+  ```
+  [[layers]]
+    name = 'edit'
+    autosave_timeout = 300000
+  ```
+- `autosave_events`: 设定自动保存依赖的Vim事件，默认是空表。比如需要在离开插入模式时或者内容改变时自动保存：
+  ```
+  [[layers]]
+    name = 'edit'
+    autosave_events = ['InsertLeave', 'TextChanged']
+  ```
+- `autosave_all_buffers`: 设定是否需要保存所有文件，默认是只保存当前编辑的文件，如果该选项设定成`true`则保存所有文件。
+  ```
+  [[layers]]
+    name = 'edit'
+    autosave_all_buffers = true
+  ```
+- `autosave_location`: 设定保存文件的位置，默认为空，表示保存为原始路径。也可以设定成一个备份文件夹，自动保存的文件保存到指定的备份文件夹里面，而不修改原始文件。
+  ```
+  [[layers]]
+    name = 'edit'
+    autosave_location = '~/.cache/backup/'
+  ```

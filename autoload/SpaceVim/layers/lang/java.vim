@@ -1,13 +1,13 @@
 "=============================================================================
 " java.vim --- SpaceVim lang#java layer
-" Copyright (c) 2016-2020 Wang Shidong & Contributors
-" Author: Wang Shidong < wsdjeg at 163.com >
+" Copyright (c) 2016-2023 Wang Shidong & Contributors
+" Author: Wang Shidong < wsdjeg@outlook.com >
 " URL: https://spacevim.org
 " License: GPLv3
 "=============================================================================
 
 ""
-" @section lang#java, layer-lang-java
+" @section lang#java, layers-lang-java
 " @parentsection layers
 " This layer is for java development, disabled by default, to enable this
 " layer, add following snippet to your SpaceVim configuration file.
@@ -33,6 +33,7 @@
 "       ''
 "     ]
 " <
+" 4. `enabled_linters`: Set the enabled linters for java, default is `['javac']`.
 " @subsection Mappings
 " >
 "   Import key bindings:
@@ -105,7 +106,12 @@
 " or download google's formater jar from:
 " https://github.com/google/google-java-format
 "
-" and set 'g:spacevim_layer_lang_java_formatter' to the path of the jar.
+" and set the layer option `java_formatter_jar` to the path of the jar.
+" >
+"   [[layers]]
+"     name = 'lang#java'
+"     java_formatter_jar = 'path/to/google-java-format.jar'
+" <
 
 
 
@@ -124,15 +130,17 @@ let s:java_file_head = [
       \ ''
       \ ]
 let s:java_interpreter = 'java'
+let s:enabled_linters = ['javac']
 
 function! SpaceVim#layers#lang#java#plugins() abort
-  let plugins = [
-        \ ['wsdjeg/vim-dict',               { 'on_ft' : 'java'}],
-        \ ['wsdjeg/java_getset.vim',        { 'on_ft' : 'java', 'loadconf' : 1}],
-        \ ['wsdjeg/JavaUnit.vim',           { 'on_ft' : 'java'}],
-        \ ['vim-jp/vim-java',               { 'on_ft' : 'java'}],
-        \ ['artur-shaik/vim-javacomplete2', { 'on_ft' : ['java','jsp'], 'loadconf' : 1}],
-        \ ]
+  let plugins = []
+  if !SpaceVim#layers#lsp#check_filetype('java')
+        \ && !SpaceVim#layers#lsp#check_server('jdtls')
+    call add(plugins, [g:_spacevim_root_dir . 'bundle/vim-javacomplete2', { 'on_ft' : ['java','jsp'], 'loadconf' : 1}])
+  endif
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/JavaUnit.vim', {'on_ft' : 'java'}])
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/java_getset.vim', {'on_ft' : 'java'}])
+  call add(plugins, [g:_spacevim_root_dir . 'bundle/vim-dict', {'on_ft' : 'java'}])
   return plugins
 endfunction
 
@@ -140,8 +148,31 @@ function! SpaceVim#layers#lang#java#config() abort
   call SpaceVim#mapping#space#regesit_lang_mappings('java', function('s:language_specified_mappings'))
   call SpaceVim#plugins#repl#reg('java', 'jshell')
   call add(g:spacevim_project_rooter_patterns, 'pom.xml')
+  call add(g:spacevim_project_rooter_patterns, 'build.gradle')
+
+  " for neomake 
+  " neomake will be disabled when lsp is enabled for java.
+  if SpaceVim#layers#lsp#check_filetype('java')
+        \ || SpaceVim#layers#lsp#check_server('jdtls')
+    let g:neomake_java_enabled_makers = []
+  else
+    if g:spacevim_lint_engine ==# 'neomake'
+      let g:neomake_java_javac_options = ['-J-Duser.language=en'] 
+      let g:neomake_java_enabled_makers = s:enabled_linters
+      for lint in g:neomake_java_enabled_makers
+        let g:neomake_java_{lint}_remove_invalid_entries = 1
+      endfor
+    endif
+  endif
+
+  " defined JDTLS_HOME
+
+  if empty($JDTLS_HOME) && !empty($Scoop)
+    let $JDTLS_HOME = $Scoop . '/apps/jdtls/current' 
+  endif
 
   if SpaceVim#layers#lsp#check_filetype('java')
+        \ || SpaceVim#layers#lsp#check_server('jdtls')
     call SpaceVim#mapping#gd#add('java', function('SpaceVim#lsp#go_to_def'))
   else
     call SpaceVim#mapping#gd#add('java', function('s:go_to_def'))
@@ -149,10 +180,12 @@ function! SpaceVim#layers#lang#java#config() abort
   augroup SpaceVim_lang_java
     au!
     if !SpaceVim#layers#lsp#check_filetype('java')
+          \ && !SpaceVim#layers#lsp#check_server('jdtls')
       " omnifunc will be used only when no java lsp support
       autocmd FileType java setlocal omnifunc=javacomplete#Complete
     endif
     autocmd FileType jsp call <SID>JspFileTypeInit()
+    autocmd FileType java set comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,://
   augroup END
   let g:neoformat_enabled_java = get(g:, 'neoformat_enabled_java', ['googlefmt'])
   let g:neoformat_java_googlefmt = {
@@ -173,6 +206,26 @@ function! SpaceVim#layers#lang#java#config() abort
           \ })
   endif
   call SpaceVim#layers#edit#add_ft_head_tamplate('java', s:java_file_head)
+  call SpaceVim#plugins#projectmanager#reg_callback(function('s:handle_java_project_changed'))
+  call SpaceVim#plugins#tasks#reg_provider(function('s:maven_tasks'))
+endfunction
+
+function! s:maven_tasks() abort
+  let detect_task = {}
+  let conf = {}
+  if filereadable('pom.xml')
+    call extend(detect_task, {
+          \ 'compile' : {'command' : 'mvn', 'args' : ['compile'], 'isDetected' : 1, 'detectedName' : 'mvn:'}
+          \ })
+  endif
+  return detect_task
+endfunction
+
+function! s:handle_java_project_changed() abort
+  try
+    call javacomplete#classpath#classpath#BuildClassPath()
+  catch
+  endtry
 endfunction
 
 function! s:JspFileTypeInit() abort
@@ -293,6 +346,7 @@ function! s:language_specified_mappings() abort
         \ 'send selection and keep code buffer focused', 1)
 
   if SpaceVim#layers#lsp#check_filetype('java')
+        \ || SpaceVim#layers#lsp#check_server('jdtls')
     nnoremap <silent><buffer> K :call SpaceVim#lsp#show_doc()<CR>
 
     call SpaceVim#mapping#space#langSPC('nnoremap', ['l', 'd'],
@@ -328,6 +382,20 @@ function! SpaceVim#layers#lang#java#set_variable(var) abort
   let s:java_formatter_jar = get(a:var,
         \ 'java_formatter_jar',
         \ s:java_formatter_jar)
+  let s:enabled_linters = get(a:var, 'enabled_linters', s:enabled_linters)
 endfunction
 
 " vim:set et sw=2 cc=80:
+
+
+function! SpaceVim#layers#lang#java#health() abort
+  call SpaceVim#layers#lang#java#plugins()
+  call SpaceVim#layers#lang#java#config()
+  return 1
+endfunction
+
+function! SpaceVim#layers#lang#java#loadable() abort
+
+  return 1
+
+endfunction

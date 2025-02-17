@@ -1,9 +1,3 @@
-"=============================================================================
-" FILE: dein.vim
-" AUTHOR:  Shougo Matsushita <Shougo.Matsu@gmail.com>
-" License: MIT license
-"=============================================================================
-
 function! unite#kinds#dein#define() abort
   return s:kind
 endfunction
@@ -22,13 +16,13 @@ let s:kind.action_table.preview = {
       \ }
 function! s:kind.action_table.preview.func(candidate) abort
   " Search help files.
-  let readme = get(split(globpath(
-        \ a:candidate.action__path, 'doc/*.?*', 1), '\n'), 0, '')
+  let readme = get(globpath(a:candidate.action__path, 'doc/*.?*',
+        \ v:true, v:true), 0, '')
 
   if readme ==# ''
     " Search README files.
-    let readme = get(split(globpath(
-          \ a:candidate.action__path, 'README*', 1), '\n'), 0, '')
+    let readme = get(globpath(a:candidate.action__path, 'README*',
+          \ v:true, v:true), 0, '')
     if readme ==# ''
       return
     endif
